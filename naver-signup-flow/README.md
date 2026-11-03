@@ -2,7 +2,7 @@
 
 한경 UI/UX PM KDT 실습 · **UX 디자인 원칙 10가지**(Jakob Nielsen 사용성 휴리스틱 기반)로 네이버 회원가입 과정을 분석하고 개선한 프로젝트예요.
 
-- 피그마 파일: [네이버 회원가입 UX 개선](https://www.figma.com/design/TVttbnbMhHzPen1T4MfgTi)
+- 피그마 파일: 네이버 회원가입 UX 개선 (→ www.figma.com)
 - 화면 속 이름·생년월일·아이디는 모두 예시 데이터예요. 원본 캡처의 개인정보는 가렸어요.
 
 ---
@@ -13,10 +13,10 @@
 
 | | | |
 |---|---|---|
-| ![약관동의](naver-signup-flow/images/before/01_terms.png) | ![이름](naver-signup-flow/images/before/02_name.png) | ![생년월일](naver-signup-flow/images/before/03_birthdate.png) |
-| ![성별](naver-signup-flow/images/before/04_gender.png) | ![휴대폰 인증](naver-signup-flow/images/before/05_phone.png) | ![정보 확인](naver-signup-flow/images/before/11_confirm.png) |
-| ![아이디](naver-signup-flow/images/before/06_id.png) | ![비밀번호](naver-signup-flow/images/before/07_password.png) | ![패스키](naver-signup-flow/images/before/08_passkey.png) |
-| ![환영](naver-signup-flow/images/before/09_welcome.png) | ![생년월일 2](naver-signup-flow/images/before/10_birthdate_2.png) | |
+| ![약관동의](images/before/01_terms.png) | ![이름](images/before/02_name.png) | ![생년월일](images/before/03_birthdate.png) |
+| ![성별](images/before/04_gender.png) | ![휴대폰 인증](images/before/05_phone.png) | ![정보 확인](images/before/11_confirm.png) |
+| ![아이디](images/before/06_id.png) | ![비밀번호](images/before/07_password.png) | ![패스키](images/before/08_passkey.png) |
+| ![환영](images/before/09_welcome.png) | ![생년월일 2](images/before/10_birthdate_2.png) | |
 
 ## 2. 문제 분석
 
@@ -54,7 +54,7 @@
 
 ### 개선 화면 이미지
 
-개선 화면 이미지는 추가 예정이에요. 지금은 [피그마 파일](https://www.figma.com/design/TVttbnbMhHzPen1T4MfgTi)의 "개선 화면"·"Flow" 페이지에서 볼 수 있어요.
+개선 화면 이미지는 추가 예정이에요. 지금은 피그마 파일 (→ www.figma.com)의 "개선 화면"·"Flow" 페이지에서 볼 수 있어요.
 
 ## 4. 조사: 네이버는 왜 실명/비실명 아이디를 나눴을까?
 
@@ -66,19 +66,18 @@
 
 **나눈 이유**
 
-1. **인증을 두 번 하는 번거로움 줄이기 (2023년 도입)**: 예전에는 가입 때 번호 확인, 서비스 이용 때 명의 확인으로 인증을 두 번 해야 했어요. 가입할 때 실명 인증을 고르면 이후 서비스마다 다시 인증하지 않아도 돼요.
-2. **개인정보는 꼭 필요한 만큼만**: 네이버는 가입 정보를 최소화하고, 본인 확인은 이용자가 선택할 때만 거치도록 했어요.
-3. **본인 명의 휴대폰이 없어도 가입 가능하게**: 해외 번호나 가족 명의 휴대폰을 쓰는 사람도 가입할 수 있어요.
-
+**인증을 두 번 하는 번거로움 줄이기 (2023년 도입)**: 예전에는 가입 때 번호 확인, 서비스 이용 때 명의 확인으로 인증을 두 번 해야 했어요. 가입할 때 실명 인증을 고르면 이후 서비스마다 다시 인증하지 않아도 돼요.
+**개인정보는 꼭 필요한 만큼만**: 네이버는 가입 정보를 최소화하고, 본인 확인은 이용자가 선택할 때만 거치도록 했어요.
+**본인 명의 휴대폰이 없어도 가입 가능하게**: 해외 번호나 가족 명의 휴대폰을 쓰는 사람도 가입할 수 있어요.
 **정리**: 한 사람이 두 가지를 다 얻는 구조가 아니라, 사용자가 **가입 편의성**과 **서비스 즉시 이용** 중 하나를 고르는 트레이드오프예요. 원래 화면은 이 선택을 작은 체크박스 하나로만 처리해서, 무엇을 얻고 무엇을 포기하는지 알 수 없었어요. 개선안은 선택 카드에 각 선택의 결과를 보여줘서 사용자가 알고 고를 수 있게 했어요.
 
 > 참고: 이 구조는 비실명 가입이 가능해 명의도용·복수 계정 우려가 있다는 지적도 받았어요 (2024년 방송통신위원회 본인확인기관 심사).
 
 **출처**
-- [SBS Biz – 네이버, 인증 줄이고…](https://biz.sbs.co.kr/amp/article/20000122795)
-- [게임메카 – NHN 주민등록번호 폐기](https://www.gamemeca.com/view.php?gid=6114)
-- [뉴데일리 – 네이버 본인확인기관 심사](https://biz.newdaily.co.kr/site/data/html/2024/06/10/2024061000107.amp.html)
-- [Seoul Start – Naver account guide](https://seoulstart.com/guides/naver-account-guide)
+- SBS Biz – 네이버, 인증 줄이고… (→ biz.sbs.co.kr)
+- 게임메카 – NHN 주민등록번호 폐기 (→ www.gamemeca.com)
+- 뉴데일리 – 네이버 본인확인기관 심사 (→ biz.newdaily.co.kr)
+- Seoul Start – Naver account guide (→ seoulstart.com)
 
 ## 5. 남은 과제
 
