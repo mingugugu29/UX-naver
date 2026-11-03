@@ -1,0 +1,1937 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>회원가입 개선 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+/* 레이아웃: 어두운 바탕 위 가운데 카드 1장, 카드 안은 머리(뒤로·진행) → 제목 → 본문 → 하단 버튼 */
+:root {
+  color-scheme: dark;
+
+  /* 색상 (피그마 Color 변수와 같은 값) */
+  --bg: #161616;
+  --card: #1f1f1f;
+  --surface: #2b2b2b;
+  --surface-sel: #233322;
+  --line-card: #333333;
+  --line: #3a3a3a;
+  --line-input: #4a4a4a;
+  --fg: #ffffff;
+  --fg-2: #b8b8b8;
+  --fg-3: #8a8a8a;
+  --fg-off: #666666;
+  --brand: #67c664;
+  --action: #5aa858;
+  --action-off: #2e2e2e;
+  --on-brand: #14200f;
+  --error: #e5604d;
+  --warn: #f2b84b;
+
+  /* 글꼴 */
+  --font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+
+  /* 모양 */
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-card: 20px;
+}
+
+html { background: var(--bg); }
+
+[hidden] { display: none !important; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-block: 32px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 4px;
+}
+
+.wordmark {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.proto-chip {
+  font-size: 12px;
+  color: var(--fg-2);
+  border: 1px solid var(--line-input);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+/* 카드 */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line-card);
+  border-radius: var(--radius-card);
+  padding: 28px 40px 40px;
+  min-height: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card-head { display: grid; gap: 12px; }
+
+.card-title h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: pre-line;
+  text-wrap: balance;
+}
+.card-title h1:focus { outline: none; }
+.card-title p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.card-foot { display: grid; gap: 10px; }
+
+.card.center .card-title { text-align: center; }
+.card.center .card-body { justify-content: center; }
+
+.hint {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.proto-note {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--fg-3);
+}
+.proto-note b { color: var(--fg-2); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .page { padding-block: 20px 28px; }
+  .card {
+    padding: 20px 20px 24px;
+    min-height: 0;
+    border-radius: 16px;
+  }
+  .card-title h1 { font-size: 21px; }
+}
+
+/* ---------- 공통 ---------- */
+.icon { display: inline-grid; flex: none; }
+.icon svg { display: block; }
+
+button { font-family: var(--font); }
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.link {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  flex: none;
+}
+.link:hover { color: var(--fg); }
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  padding: 6px;
+  margin: -6px;
+  color: var(--fg-2);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ---------- 버튼 ---------- */
+.btn {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.05s;
+}
+.btn-primary {
+  height: 52px;
+  background: var(--action);
+  color: #fff;
+}
+.btn-primary:not(:disabled):hover { background: #63b561; }
+.btn-primary:not(:disabled):active { transform: translateY(1px); background: #4f964d; }
+.btn-primary:disabled {
+  background: var(--action-off);
+  color: var(--fg-off);
+  cursor: not-allowed;
+}
+.btn-secondary {
+  height: 48px;
+  background: transparent;
+  border: 1px solid var(--line-input);
+  color: var(--fg-2);
+  font-weight: 500;
+}
+.btn-secondary:hover { color: var(--fg); border-color: var(--fg-3); }
+
+.back { width: 40px; height: 40px; margin: -8px 0 0 -10px; color: var(--fg); }
+
+/* ---------- 진행 단계 ---------- */
+.progress { display: grid; gap: 8px; }
+.progress-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background-color 0.3s;
+}
+.bar.on { background: var(--brand); }
+.progress-labels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.progress-labels li { min-width: 0; }
+.progress-labels .done { color: var(--brand); }
+.progress-labels .now { color: var(--fg); font-weight: 700; }
+
+/* ---------- 입력창 (밑줄형) ---------- */
+.field { display: grid; gap: 6px; }
+.field-label { font-size: 13px; color: var(--fg-3); }
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 10px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field-row:focus-within {
+  border-bottom-color: var(--brand);
+  box-shadow: 0 1px 0 var(--brand);
+}
+.field[data-status="error"] .field-row {
+  border-bottom-color: var(--error);
+  box-shadow: 0 1px 0 var(--error);
+}
+.field-prefix { font-size: 17px; color: var(--fg-2); flex: none; }
+.field-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--fg);
+  font: 400 17px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.field-input::placeholder { color: var(--fg-off); }
+.field-input:disabled { color: var(--fg-off); }
+.field-status svg { width: 20px; height: 20px; }
+.field-helper {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-3);
+}
+.field[data-status="error"] .field-helper { color: var(--error); }
+.field[data-status="success"] .field-helper { color: var(--brand); }
+
+/* ---------- 약관 ---------- */
+.all-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.all-agree .icon { color: var(--fg-off); }
+.all-agree[aria-checked="true"] { background: var(--surface-sel); border-color: var(--brand); }
+.all-agree[aria-checked="true"] .icon { color: var(--brand); }
+.all-text { display: grid; gap: 4px; min-width: 0; }
+.all-title { font-size: 17px; font-weight: 700; }
+.all-desc { font-size: 13px; line-height: 1.5; color: var(--fg-2); }
+
+.group { display: grid; }
+.group-label {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+.check-row { display: flex; align-items: center; gap: 12px; }
+.check-row.sub { padding-left: 34px; }
+.check-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  color: var(--fg);
+  font-size: 15px;
+  cursor: pointer;
+}
+.check-btn .icon { color: var(--fg-off); transition: color 0.15s; }
+.check-btn[aria-checked="true"] .icon { color: var(--brand); }
+
+.disclosure {
+  font-size: 13px;
+  color: var(--fg-2);
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.disclosure summary { cursor: pointer; font-weight: 500; }
+.disclosure p { margin: 10px 0 0; line-height: 1.6; }
+
+/* ---------- 선택 카드 · 세그먼트 ---------- */
+.choices { display: grid; gap: 12px; }
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-lg);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.choice[aria-checked="true"] {
+  background: var(--surface-sel);
+  border-color: var(--brand);
+  box-shadow: inset 0 0 0 0.5px var(--brand);
+}
+.radio {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 2px solid var(--fg-off);
+  border-radius: 50%;
+}
+[aria-checked="true"] > .radio { border-color: var(--brand); }
+[aria-checked="true"] > .radio::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.choice-text { display: grid; gap: 4px; min-width: 0; }
+.choice-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.choice-desc { font-size: 13px; line-height: 1.55; color: var(--fg-2); }
+
+.segments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.seg {
+  height: 52px;
+  background: var(--surface);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius);
+  color: var(--fg-2);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.seg[aria-checked="true"] {
+  background: var(--surface-sel);
+  border-color: var(--brand);
+  box-shadow: inset 0 0 0 0.5px var(--brand);
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* ---------- 안내 박스 ---------- */
+.notice {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+.notice p { margin: 0; }
+.notice .icon { margin-top: 1px; }
+.notice-info .icon { color: var(--fg-3); }
+.notice-warn .icon { color: var(--warn); }
+.notice-error { box-shadow: inset 2px 0 0 var(--error); }
+.notice-error .icon { color: var(--error); }
+
+/* ---------- 이전 단계 요약 ---------- */
+.summary { display: grid; }
+.summary-item {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.summary-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.summary-label { font-size: 13px; color: var(--fg-3); }
+.summary-value { font-size: 17px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* ---------- 인증 타이머 ---------- */
+.timer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--fg-2);
+}
+.timer-time { color: var(--brand); font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer.expired .timer-time { color: var(--error); }
+.stack { display: grid; gap: 10px; }
+.stack:empty { display: none; }
+
+/* ---------- 비밀번호 조건 ---------- */
+.rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--fg-3);
+  transition: color 0.15s;
+}
+.rule.met { color: var(--brand); }
+.strength { margin: 0; font-size: 13px; color: var(--fg-3); }
+.strength b { color: var(--fg-2); }
+.strength b.good { color: var(--brand); }
+.strength b.bad { color: var(--error); }
+
+/* ---------- 그림 영역 ---------- */
+.illus {
+  display: grid;
+  place-items: center;
+  height: 180px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--brand);
+}
+.done-mark { display: grid; place-items: center; color: var(--brand); padding-block: 16px; }
+
+/* ---------- 바텀시트 ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+  animation: fade 0.2s ease-out;
+}
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  display: grid;
+  gap: 16px;
+  padding-top: 12px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  animation: rise 0.25s ease-out;
+}
+.sheet-handle {
+  justify-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-input);
+}
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sheet-head h2 { margin: 0; font-size: 18px; }
+.sheet-rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 16px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.sheet-rows dt { font-weight: 700; color: var(--fg-2); }
+.sheet-rows dd { margin: 0; }
+.sheet-note { margin: 0; font-size: 12px; color: var(--fg-3); }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 520px) {
+  .progress-labels { font-size: 11px; }
+  .check-row.sub { padding-left: 24px; }
+  .sheet-rows { grid-template-columns: 1fr; gap: 2px; }
+  .sheet-rows dd { margin-bottom: 8px; }
+}
+
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <span class="wordmark">회원가입</span>
+    <span class="proto-chip">UX 실습 프로토타입</span>
+  </header>
+
+  <main id="app" class="card" aria-live="polite"></main>
+
+  <p class="proto-note">
+    입력한 내용은 저장되거나 전송되지 않아요. 테스트 인증번호는 <b>123123</b>이에요.
+    <button id="restart" type="button" class="link">처음부터 다시</button>
+  </p>
+</div>
+<script>
+(function () {
+  var factories = {}, cache = {};
+  function __define(path, factory) { factories[path] = factory; }
+  function __require(path) {
+    if (!cache[path]) {
+      cache[path] = {};
+      factories[path](cache[path], __require);
+    }
+    return cache[path];
+  }
+__define('js/components/checks.js', function (exports, __require) {
+// 약관 체크: 전체 동의 박스와 항목 한 줄
+const { h, icon } = __require('js/dom.js');
+const { icons } = __require('js/icons.js');
+function allAgree({ title, desc, onToggle }) {
+  let on = false;
+  const mark = h('span', { class: 'icon' });
+  const el = h('button', {
+    type: 'button',
+    class: 'all-agree',
+    role: 'checkbox',
+    'aria-checked': 'false',
+    onclick: () => onToggle(!on),
+  },
+    mark,
+    h('span', { class: 'all-text' },
+      h('span', { class: 'all-title' }, title),
+      h('span', { class: 'all-desc' }, desc)),
+  );
+
+  function set(value) {
+    on = value;
+    el.setAttribute('aria-checked', String(value));
+    mark.innerHTML = value ? icons.circleOn : icons.circleOff;
+  }
+  set(false);
+  return { el, set };
+}
+
+function checkRow({ label, sub = false, onToggle, onView }) {
+  let on = false;
+  const btn = h('button', {
+    type: 'button',
+    class: 'check-btn',
+    role: 'checkbox',
+    'aria-checked': 'false',
+    onclick: () => onToggle(!on),
+  }, icon('check'), h('span', {}, label));
+
+  const el = h('div', { class: `check-row${sub ? ' sub' : ''}` },
+    btn,
+    onView && h('button', { type: 'button', class: 'link', 'aria-label': `${label} 보기`, onclick: onView }, '보기'),
+  );
+
+  return {
+    el,
+    set(value) {
+      on = value;
+      btn.setAttribute('aria-checked', String(value));
+    },
+  };
+}
+
+exports.allAgree = allAgree;
+exports.checkRow = checkRow;
+
+});
+__define('js/components/choice.js', function (exports, __require) {
+// 하나만 고르는 선택지: 설명이 있는 카드형, 짧은 버튼형
+const { h } = __require('js/dom.js');
+function radioGroup({ label, value, options, className, build, onChange }) {
+  const items = options.map((option) => {
+    const el = build(option);
+    el.dataset.value = option.value;
+    el.setAttribute('role', 'radio');
+    el.addEventListener('click', () => select(option.value));
+    return el;
+  });
+
+  function select(v) {
+    items.forEach((el) => {
+      const on = el.dataset.value === v;
+      el.setAttribute('aria-checked', String(on));
+      el.tabIndex = on ? 0 : -1;
+    });
+    onChange(v);
+  }
+
+  // 화살표 키로 선택 이동
+  const group = h('div', { class: className, role: 'radiogroup', 'aria-label': label }, items);
+  group.addEventListener('keydown', (e) => {
+    const dir = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    const i = items.findIndex((el) => el.getAttribute('aria-checked') === 'true');
+    const nextEl = items[(i + dir + items.length) % items.length];
+    select(nextEl.dataset.value);
+    nextEl.focus();
+  });
+
+  items.forEach((el) => {
+    const on = el.dataset.value === value;
+    el.setAttribute('aria-checked', String(on));
+    el.tabIndex = on ? 0 : -1;
+  });
+  return group;
+}
+
+function choiceCards({ label, value, options, onChange }) {
+  return radioGroup({
+    label, value, options, onChange,
+    className: 'choices',
+    build: (o) => h('button', { type: 'button', class: 'choice' },
+      h('span', { class: 'radio' }),
+      h('span', { class: 'choice-text' },
+        h('span', { class: 'choice-title' }, o.title, o.badge && h('span', { class: 'badge' }, o.badge)),
+        o.desc.map((line) => h('span', { class: 'choice-desc' }, line)))),
+  });
+}
+
+function segments({ label, value, options, onChange }) {
+  return radioGroup({
+    label, value, options, onChange,
+    className: 'segments',
+    build: (o) => h('button', { type: 'button', class: 'seg' }, o.label),
+  });
+}
+
+exports.choiceCards = choiceCards;
+exports.segments = segments;
+
+});
+__define('js/components/field.js', function (exports, __require) {
+// 밑줄형 입력창: 상태(default · error · success)에 따라 밑줄, 아이콘, 안내 문구가 바뀜
+const { h } = __require('js/dom.js');
+const { icons } = __require('js/icons.js');
+function field({
+  id,
+  label,
+  value = '',
+  type = 'text',
+  prefix,
+  inputmode,
+  maxlength,
+  autocomplete = 'off',
+  format,
+  clearable = true,
+  toggle = false,
+  onValue,
+}) {
+  const input = h('input', {
+    id,
+    type,
+    value,
+    class: 'field-input',
+    inputMode: inputmode,
+    maxLength: maxlength,
+    autocomplete,
+    spellcheck: false,
+    'aria-describedby': `${id}-help`,
+  });
+
+  const status = h('span', { class: 'field-status', 'aria-hidden': 'true' });
+  const helper = h('p', { class: 'field-helper', id: `${id}-help`, hidden: true });
+
+  const clear = clearable && h('button', {
+    type: 'button',
+    class: 'icon-btn',
+    'aria-label': `${label} 지우기`,
+    html: icons.clear,
+    onclick: () => {
+      input.value = '';
+      emit();
+      input.focus();
+    },
+  });
+
+  const eye = toggle && h('button', {
+    type: 'button',
+    class: 'icon-btn',
+    'aria-label': '비밀번호 보기',
+    html: icons.eyeOff,
+    onclick: () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      eye.innerHTML = show ? icons.eye : icons.eyeOff;
+      eye.setAttribute('aria-label', show ? '비밀번호 숨기기' : '비밀번호 보기');
+    },
+  });
+
+  const el = h('div', { class: 'field', 'data-status': 'default' },
+    h('label', { class: 'field-label', htmlFor: id }, label),
+    h('div', { class: 'field-row' },
+      prefix && h('span', { class: 'field-prefix' }, prefix),
+      input, clear, status, eye),
+    helper,
+  );
+
+  function syncClear() {
+    if (clear) clear.hidden = !input.value || el.dataset.status === 'success' || input.disabled;
+  }
+
+  function emit() {
+    if (format) input.value = format(input.value);
+    syncClear();
+    onValue?.(input.value);
+  }
+
+  input.addEventListener('input', emit);
+
+  function setStatus(kind, msg) {
+    el.dataset.status = kind;
+    status.innerHTML = kind === 'success' ? icons.ok : kind === 'error' ? icons.err : '';
+    helper.textContent = msg || '';
+    helper.hidden = !msg;
+    input.setAttribute('aria-invalid', String(kind === 'error'));
+    syncClear();
+  }
+
+  /** 검사 결과({ ok, error, msg })를 그대로 화면 상태로 반영 */
+  function apply(result) {
+    setStatus(result.ok ? 'success' : result.error ? 'error' : 'default', result.msg);
+  }
+
+  syncClear();
+  return { el, input, setStatus, apply };
+}
+
+exports.field = field;
+
+});
+__define('js/components/notice.js', function (exports, __require) {
+// 안내 박스 (info · warn · error)
+const { h, icon } = __require('js/dom.js');
+const ICON = { info: 'info', warn: 'warn', error: 'err' };
+
+function notice(tone, text) {
+  return h('div', { class: `notice notice-${tone}`, role: tone === 'error' ? 'alert' : null },
+    icon(ICON[tone]),
+    h('p', {}, text));
+}
+
+exports.notice = notice;
+
+});
+__define('js/components/progress.js', function (exports, __require) {
+// 진행 단계 바 (가시성)
+const { h } = __require('js/dom.js');
+const STEPS = ['약관 동의', '본인 정보', '휴대폰 인증', '계정 만들기'];
+
+function progress(step) {
+  return h('div', {
+    class: 'progress',
+    role: 'progressbar',
+    'aria-valuemin': 1,
+    'aria-valuemax': STEPS.length,
+    'aria-valuenow': step,
+    'aria-valuetext': `${STEPS.length}단계 중 ${step}단계, ${STEPS[step - 1]}`,
+  },
+    h('div', { class: 'progress-bars' },
+      STEPS.map((_, i) => h('span', { class: `bar${i < step ? ' on' : ''}` }))),
+    h('ol', { class: 'progress-labels', 'aria-hidden': 'true' },
+      STEPS.map((label, i) => h('li', {
+        class: i < step - 1 ? 'done' : i === step - 1 ? 'now' : '',
+      }, `${i + 1}. ${label}`))),
+  );
+}
+
+exports.STEPS = STEPS;
+exports.progress = progress;
+
+});
+__define('js/components/sheet.js', function (exports, __require) {
+// 아래에서 올라오는 바텀시트 (약관 요약 보기)
+const { h, icon } = __require('js/dom.js');
+function openSheet({ title, rows, note, actionLabel, onAction }) {
+  const returnFocus = document.activeElement;
+
+  function close() {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey);
+    returnFocus?.focus?.();
+  }
+
+  function onKey(e) {
+    if (e.key === 'Escape') close();
+  }
+
+  const action = h('button', {
+    type: 'button',
+    class: 'btn btn-primary',
+    onclick: () => {
+      onAction?.();
+      close();
+    },
+  }, actionLabel);
+
+  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title' },
+    h('span', { class: 'sheet-handle', 'aria-hidden': 'true' }),
+    h('div', { class: 'sheet-head' },
+      h('h2', { id: 'sheet-title' }, title),
+      h('button', { type: 'button', class: 'icon-btn', 'aria-label': '닫기', onclick: close }, icon('close'))),
+    h('dl', { class: 'sheet-rows' }, rows.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
+    note && h('p', { class: 'sheet-note' }, note),
+    action,
+  );
+
+  const backdrop = h('div', {
+    class: 'sheet-backdrop',
+    onclick: (e) => {
+      if (e.target === backdrop) close();
+    },
+  }, sheet);
+
+  document.body.append(backdrop);
+  document.addEventListener('keydown', onKey);
+  action.focus();
+}
+
+exports.openSheet = openSheet;
+
+});
+__define('js/components/summary.js', function (exports, __require) {
+// 입력한 값 목록 + '수정' 링크 (정보 확인 화면 · 사용자 통제와 자유)
+const { h } = __require('js/dom.js');
+function summaryList(items) {
+  return h('div', { class: 'summary' },
+    items.map(({ label, value, onEdit }) =>
+      h('div', { class: 'summary-item' },
+        h('div', { class: 'summary-text' },
+          h('span', { class: 'summary-label' }, label),
+          h('span', { class: 'summary-value' }, value)),
+        onEdit && h('button', { type: 'button', class: 'link', 'aria-label': `${label} 수정`, onclick: onEdit }, '수정'))));
+}
+
+exports.summaryList = summaryList;
+
+});
+__define('js/dom.js', function (exports, __require) {
+// DOM 요소를 만드는 작은 도우미
+const { icons } = __require('js/icons.js');
+function h(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value == null || value === false) continue;
+    if (key === 'class') el.className = value;
+    else if (key === 'html') el.innerHTML = value;
+    else if (key.startsWith('on') && typeof value === 'function') {
+      el.addEventListener(key.slice(2).toLowerCase(), value);
+    } else if (key.startsWith('aria-') || key.startsWith('data-') || key === 'role') {
+      el.setAttribute(key, value === true ? 'true' : String(value));
+    } else if (key in el) {
+      el[key] = value;
+    } else {
+      el.setAttribute(key, value === true ? '' : value);
+    }
+  }
+
+  for (const child of children.flat(Infinity)) {
+    if (child == null || child === false) continue;
+    el.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return el;
+}
+
+function icon(name) {
+  return h('span', { class: 'icon', html: icons[name] });
+}
+
+exports.h = h;
+exports.icon = icon;
+
+});
+__define('js/icons.js', function (exports, __require) {
+// 인라인 SVG 아이콘 (currentColor로 색을 따라감)
+const svg = (inner, size = 20) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">${inner}</svg>`;
+
+const tick = 'stroke-linecap="round" stroke-linejoin="round"';
+
+const icons = {
+  back: svg(`<path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" ${tick}/>`, 24),
+  close: svg(`<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" ${tick}/>`, 22),
+  check: svg(`<path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" ${tick}/>`, 22),
+  checkSmall: svg(`<path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" ${tick}/>`, 16),
+  circleOn: svg(`<circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7 12.3l3.3 3.3L17 9" stroke="#1f1f1f" stroke-width="2.2" ${tick}/>`, 28),
+  circleOff: svg(`<circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.5"/><path d="M7 12.3l3.3 3.3L17 9" stroke="currentColor" stroke-width="2" ${tick}/>`, 28),
+  clear: svg(`<circle cx="12" cy="12" r="10" fill="#8a8a8a"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round"/>`),
+  ok: svg(`<circle cx="12" cy="12" r="10" fill="#67c664"/><path d="M7.5 12.2l3 3L16.5 9" stroke="#1f1f1f" stroke-width="2" ${tick}/>`),
+  err: svg(`<circle cx="12" cy="12" r="10" fill="#e5604d"/><path d="M12 7v6" stroke="#1f1f1f" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1.2" fill="#1f1f1f"/>`),
+  eye: svg(`<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/>`, 22),
+  eyeOff: svg(`<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`, 22),
+  info: svg(`<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/>`, 18),
+  warn: svg(`<circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M12 6.5v7" stroke="#1f1f1f" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.3" fill="#1f1f1f"/>`, 18),
+  key: svg(`<circle cx="8" cy="12" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M12 12h9M18 12v3M21 12v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`, 64),
+  done: svg(`<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 12.5l3 3 6-6.5" stroke="currentColor" stroke-width="1.8" ${tick}/>`, 80),
+};
+
+exports.icons = icons;
+
+});
+__define('js/main.js', function (exports, __require) {
+// 시작점
+const { start, ctx } = __require('js/router.js');
+start();
+
+document.getElementById('restart').addEventListener('click', () => ctx.restart());
+
+
+});
+__define('js/router.js', function (exports, __require) {
+// 화면 전환, 뒤로가기, 하단 버튼 상태 관리
+const { h, icon } = __require('js/dom.js');
+const { state, resetState } = __require('js/state.js');
+const { progress } = __require('js/components/progress.js');
+const { screens } = __require('js/screens/index.js');
+const app = document.getElementById('app');
+const history = [];
+let current = null;
+let view = null;
+let foot = null;
+
+const ctx = {
+  state,
+  /** 다른 화면으로 이동 */
+  go(id) {
+    if (current) history.push(current.id);
+    render(id);
+  },
+  /** 다음 화면으로 이동. '수정'으로 들어온 경우엔 원래 화면으로 돌아감 */
+  next(id) {
+    if (state.returnTo) {
+      const target = state.returnTo;
+      state.returnTo = null;
+      ctx.go(target);
+    } else {
+      ctx.go(id);
+    }
+  },
+  /** 이전 입력값 '수정' */
+  edit(id) {
+    state.returnTo = current.id;
+    ctx.go(id);
+  },
+  back() {
+    const prev = history.pop();
+    if (!prev) return;
+    state.returnTo = null;
+    render(prev);
+  },
+  /** 입력이 바뀌면 하단 버튼과 안내 문구를 다시 계산 */
+  refresh() {
+    if (!foot) return;
+    const result = view.validate ? view.validate() : { ok: true };
+    foot.primary.disabled = !result.ok;
+    foot.hint.textContent = result.ok ? '' : result.hint || '';
+    foot.hint.hidden = !foot.hint.textContent;
+  },
+  restart() {
+    resetState();
+    history.length = 0;
+    current = null;
+    render(screens.order[0]);
+  },
+};
+
+function render(id) {
+  view?.cleanup?.();
+  foot = null;
+
+  const screen = screens.byId[id];
+  current = screen;
+  view = screen.render(ctx);
+
+  const showBack = !screen.noBack && history.length > 0;
+  const head = showBack || screen.step
+    ? h('div', { class: 'card-head' },
+        showBack && h('button', { type: 'button', class: 'icon-btn back', 'aria-label': '이전 단계로', onclick: ctx.back }, icon('back')),
+        screen.step && progress(screen.step))
+    : null;
+
+  const title = h('h1', { tabIndex: -1 }, view.title ?? screen.title);
+  const hint = h('p', { class: 'hint', hidden: true });
+  const primary = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => view.onNext() }, view.primary);
+  const secondary = view.secondary &&
+    h('button', { type: 'button', class: 'btn btn-secondary', onclick: view.secondary.onClick }, view.secondary.label);
+
+  app.className = `card${view.center ? ' center' : ''}`;
+  app.replaceChildren(...[
+    head,
+    h('div', { class: 'card-title' }, title, view.sub && h('p', {}, view.sub)),
+    h('div', { class: 'card-body' }, view.body),
+    h('div', { class: 'card-foot' }, hint, primary, secondary),
+  ].filter(Boolean));
+
+  foot = { hint, primary };
+  ctx.refresh();
+
+  window.scrollTo({ top: 0 });
+  title.focus({ preventScroll: true });
+}
+
+// 입력창에서 Enter를 누르면 다음으로
+app.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.isComposing) return;
+  if (foot && !foot.primary.disabled) {
+    e.preventDefault();
+    view.onNext();
+  }
+});
+
+function start() {
+  render(screens.order[0]);
+}
+
+exports.ctx = ctx;
+exports.start = start;
+
+});
+__define('js/screens/birth.js', function (exports, __require) {
+// 04 생년월일: 숫자만 쳐도 점 자동 입력, 올바르면 안내 문구 대신 ✓
+const { field } = __require('js/components/field.js');
+const { checkBirth, digits, formatBirth } = __require('js/validators.js');
+exports.default = {
+  id: 'birth',
+  step: 2,
+  title: '생년월일을 입력해 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    const input = field({
+      id: 'birth',
+      label: '생년월일',
+      value: formatBirth(s.birth),
+      inputmode: 'numeric',
+      maxlength: 10,
+      autocomplete: 'bday',
+      format: formatBirth,
+      onValue: (v) => {
+        s.birth = digits(v);
+        update();
+      },
+    });
+
+    function update(refresh = true) {
+      input.apply(checkBirth(s.birth));
+      if (refresh) ctx.refresh();
+    }
+    update(false);
+
+    return {
+      body: input.el,
+      primary: '다음',
+      validate: () => ({ ok: checkBirth(s.birth).ok, hint: '생년월일 8자리를 바르게 입력해 주세요' }),
+      onNext: () => ctx.next('gender'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/confirm.js', function (exports, __require) {
+// 08 정보 확인: 확정 전 전체 요약, 항목별 '수정'
+const { fullInfo } = __require('js/screens/shared.js');
+exports.default = {
+  id: 'confirm',
+  step: 3,
+  title: '입력한 정보가 맞는지 확인해 주세요',
+
+  render(ctx) {
+    return {
+      sub: '틀린 항목은 "수정"을 눌러 바로 고칠 수 있어요',
+      body: fullInfo(ctx, ['idType', 'name', 'birth', 'gender', 'phone']),
+      primary: '다음',
+      validate: () => ({ ok: ctx.state.verified, hint: '바뀐 휴대전화 번호를 다시 인증해 주세요' }),
+      onNext: () => ctx.go('userId'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/content.js', function (exports, __require) {
+// 화면 문구 (예시 문구 · 실제 정책 확인 후 수정)
+
+const TERMS = {
+  required: {
+    label: '[필수] 이용약관',
+    sheet: {
+      title: '[필수] 이용약관',
+      rows: [
+        ['내용', '서비스 이용 조건, 회원의 권리와 의무'],
+        ['적용 대상', '가입하는 모든 회원'],
+      ],
+    },
+  },
+  location: {
+    label: '[선택] 위치기반서비스 이용약관',
+    sheet: {
+      title: '[선택] 위치기반서비스 이용약관',
+      rows: [
+        ['수집 항목', '기기 위치 정보'],
+        ['이용 목적', '주변 정보 추천, 지도 서비스'],
+        ['보관 기간', '목적을 이루면 바로 파기'],
+      ],
+    },
+  },
+  privacy: {
+    label: '[선택] 개인정보 수집 및 이용',
+    sheet: {
+      title: '[선택] 개인정보 수집 및 이용',
+      rows: [
+        ['수집 항목', '이름, 생년월일, 성별, 휴대전화 번호'],
+        ['이용 목적', '회원 식별, 본인 확인, 고객 상담'],
+        ['보관 기간', '회원 탈퇴 시까지 (법령에 따라 일부 보관)'],
+      ],
+    },
+  },
+  ads: {
+    label: '광고성 정보 수신',
+    sub: true,
+  },
+};
+
+const SHEET_NOTE = '예시 문구예요. 실제 약관 내용과 다를 수 있어요.';
+
+const ID_TYPES = [
+  {
+    value: 'real',
+    title: '실명 인증 아이디',
+    badge: '추천',
+    desc: [
+      '본인 명의 휴대폰으로 한 번만 인증해요.',
+      '결제·쇼핑·멤버십을 가입하자마자 쓸 수 있어요.',
+    ],
+  },
+  {
+    value: 'basic',
+    title: '일반 아이디',
+    desc: [
+      '휴대폰 번호만 확인하고 바로 가입해요.',
+      '결제·쇼핑을 쓸 때 본인 인증을 따로 해야 해요. 나중에 실명 아이디로 바꿀 수 있어요.',
+    ],
+  },
+];
+
+// 체험용으로 통과되는 인증번호 (발표용: 123123)
+const TEST_CODES = ['123123', '123456'];
+const CODE_SECONDS = 180;
+
+exports.TERMS = TERMS;
+exports.SHEET_NOTE = SHEET_NOTE;
+exports.ID_TYPES = ID_TYPES;
+exports.TEST_CODES = TEST_CODES;
+exports.CODE_SECONDS = CODE_SECONDS;
+
+});
+__define('js/screens/done.js', function (exports, __require) {
+// 12 가입 완료: 완료 상태와 다음에 할 일을 분명하게
+const { h, icon } = __require('js/dom.js');
+exports.default = {
+  id: 'done',
+  step: null,
+  noBack: true,
+
+  render(ctx) {
+    const s = ctx.state;
+    const next = s.idType === 'real'
+      ? '결제·쇼핑·멤버십을 바로 쓸 수 있어요.'
+      : '결제·쇼핑은 처음 쓸 때 본인 인증을 한 번 해 주세요.';
+
+    return {
+      center: true,
+      title: `${s.userId}님,\n만나서 반가워요!`,
+      sub: `가입이 끝났어요. ${next}${s.passkey ? ' 패스키도 설정했어요.' : ''}`,
+      body: h('div', { class: 'done-mark' }, icon('done')),
+      primary: '처음부터 다시 체험하기',
+      onNext: () => ctx.restart(),
+    };
+  },
+};
+
+
+});
+__define('js/screens/gender.js', function (exports, __require) {
+// 05 성별: 드롭다운 대신 큰 버튼 3개
+const { segments } = __require('js/components/choice.js');
+const { genderLabel } = __require('js/state.js');
+exports.default = {
+  id: 'gender',
+  step: 2,
+  title: '성별을 선택해 주세요',
+
+  render(ctx) {
+    const options = Object.entries(genderLabel).map(([value, label]) => ({ value, label }));
+
+    return {
+      body: segments({
+        label: '성별',
+        value: ctx.state.gender,
+        options,
+        onChange: (v) => { ctx.state.gender = v; },
+      }),
+      primary: '다음',
+      onNext: () => ctx.next('phone'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/idType.js', function (exports, __require) {
+// 02 아이디 유형 선택 (신규): 실명/일반 아이디 차이를 카드에서 바로 비교
+const { choiceCards } = __require('js/components/choice.js');
+const { ID_TYPES } = __require('js/screens/content.js');
+exports.default = {
+  id: 'idType',
+  step: 2,
+  title: '어떤 아이디로 가입할까요?',
+
+  render(ctx) {
+    const cards = choiceCards({
+      label: '아이디 유형',
+      value: ctx.state.idType,
+      options: ID_TYPES,
+      onChange: (v) => { ctx.state.idType = v; },
+    });
+
+    return {
+      sub: '결제·쇼핑을 바로 쓰려면 실명 인증 아이디를 골라 주세요',
+      body: cards,
+      primary: '다음',
+      onNext: () => ctx.next('name'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/index.js', function (exports, __require) {
+// 화면 목록 (순서 = 기본 가입 흐름)
+const terms = __require('js/screens/terms.js').default;
+const idType = __require('js/screens/idType.js').default;
+const name = __require('js/screens/name.js').default;
+const birth = __require('js/screens/birth.js').default;
+const gender = __require('js/screens/gender.js').default;
+const phone = __require('js/screens/phone.js').default;
+const verify = __require('js/screens/verify.js').default;
+const confirm = __require('js/screens/confirm.js').default;
+const userId = __require('js/screens/userId.js').default;
+const password = __require('js/screens/password.js').default;
+const passkey = __require('js/screens/passkey.js').default;
+const done = __require('js/screens/done.js').default;
+const list = [terms, idType, name, birth, gender, phone, verify, confirm, userId, password, passkey, done];
+
+const screens = {
+  order: list.map((s) => s.id),
+  byId: Object.fromEntries(list.map((s) => [s.id, s])),
+};
+
+exports.screens = screens;
+
+});
+__define('js/screens/name.js', function (exports, __require) {
+// 03 이름
+const { field } = __require('js/components/field.js');
+const { checkName } = __require('js/validators.js');
+exports.default = {
+  id: 'name',
+  step: 2,
+  title: '이름을 입력해 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    const input = field({
+      id: 'name',
+      label: '이름',
+      value: s.name,
+      autocomplete: 'name',
+      onValue: (v) => {
+        s.name = v.trim();
+        update();
+      },
+    });
+
+    function update(refresh = true) {
+      const result = checkName(s.name);
+      input.setStatus(result.error ? 'error' : result.ok ? 'success' : 'default', result.ok ? '' : result.msg);
+      if (refresh) ctx.refresh();
+    }
+    update(false);
+
+    return {
+      body: input.el,
+      primary: '다음',
+      validate: () => ({ ok: checkName(s.name).ok, hint: '이름을 입력하면 다음으로 넘어갈 수 있어요' }),
+      onNext: () => ctx.next('birth'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/passkey.js', function (exports, __require) {
+// 11 패스키 안내: 다크 테마 통일, '다음에 할게요'로 쉽게 건너뛰기
+const { h, icon } = __require('js/dom.js');
+const { notice } = __require('js/components/notice.js');
+exports.default = {
+  id: 'passkey',
+  step: null,
+  noBack: true, // 계정이 만들어진 뒤라 되돌아가지 않음
+  title: '비밀번호 대신 패스키로\n1초 만에 로그인해 보세요',
+
+  render(ctx) {
+    const finish = (on) => {
+      ctx.state.passkey = on;
+      ctx.go('done');
+    };
+
+    return {
+      sub: '휴대폰 잠금을 풀 때 쓰는 얼굴·지문으로 로그인하는 기능이에요.',
+      body: [
+        h('div', { class: 'illus' }, icon('key')),
+        notice('info', '얼굴·지문 정보는 내 기기 밖으로 나가지 않아요. 체험용 화면이라 실제로 설정되지는 않아요.'),
+      ],
+      primary: '지금 패스키 설정하기',
+      secondary: { label: '다음에 할게요', onClick: () => finish(false) },
+      onNext: () => finish(true),
+    };
+  },
+};
+
+
+});
+__define('js/screens/password.js', function (exports, __require) {
+// 10 비밀번호: 조건별 실시간 체크리스트, 무엇이 부족한지 버튼 위에 안내
+const { h, icon } = __require('js/dom.js');
+const { field } = __require('js/components/field.js');
+const { PASSWORD_RULES, passwordStrength } = __require('js/validators.js');
+exports.default = {
+  id: 'password',
+  step: 4,
+  title: '비밀번호를 만들어 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    const rules = h('ul', { class: 'rules', 'aria-label': '비밀번호 조건' });
+    const strength = h('p', { class: 'strength' });
+
+    const input = field({
+      id: 'password',
+      label: '비밀번호',
+      type: 'password',
+      value: s.password,
+      autocomplete: 'new-password',
+      maxlength: 16,
+      clearable: false,
+      toggle: true,
+      onValue: (v) => {
+        s.password = v;
+        update();
+      },
+    });
+
+    function update(refresh = true) {
+      rules.replaceChildren(...PASSWORD_RULES.map((rule) => {
+        const met = rule.test(s.password);
+        return h('li', { class: `rule${met ? ' met' : ''}` },
+          icon('checkSmall'), rule.label,
+          h('span', { class: 'sr-only' }, met ? ' 충족' : ' 미충족'));
+      }));
+      const level = passwordStrength(s.password);
+      strength.replaceChildren('안전도 ', h('b', { class: level.tone }, level.label));
+      if (refresh) ctx.refresh();
+    }
+    update(false);
+
+    return {
+      body: [input.el, rules, strength],
+      primary: '가입 완료하기',
+      validate: () => {
+        const missing = PASSWORD_RULES.find((r) => !r.test(s.password));
+        return missing ? { ok: false, hint: `${missing.hint}. 그러면 가입할 수 있어요` } : { ok: true };
+      },
+      onNext: () => ctx.go('passkey'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/phone.js', function (exports, __require) {
+// 06 휴대폰 인증 (발송 전): 월 1회 제한을 버튼 누르기 전에 안내
+const { field } = __require('js/components/field.js');
+const { notice } = __require('js/components/notice.js');
+const { checkPhone, digits, formatPhone } = __require('js/validators.js');
+exports.default = {
+  id: 'phone',
+  step: 3,
+  title: '휴대전화 번호를 입력해 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    const alreadySent = s.sendCount > 0;
+
+    const input = field({
+      id: 'phone',
+      label: '휴대전화 번호',
+      prefix: '+82',
+      value: formatPhone(s.phone),
+      inputmode: 'tel',
+      maxlength: 13,
+      autocomplete: 'tel-national',
+      format: formatPhone,
+      onValue: (v) => {
+        const d = digits(v);
+        if (d !== s.phone) {
+          s.phone = d;
+          s.verified = false;
+        }
+        update();
+      },
+    });
+
+    function update(refresh = true) {
+      input.apply(checkPhone(s.phone));
+      if (refresh) ctx.refresh();
+    }
+    update(false);
+
+    const limit = alreadySent
+      ? notice('warn', '이번 달에 이미 인증번호를 받았어요. 문자로 받은 번호를 그대로 입력해 주세요.')
+      : notice('warn', '인증번호는 한 달에 1번만 받을 수 있어요. 번호가 맞는지 한 번 더 확인해 주세요.');
+
+    return {
+      body: [input.el, limit],
+      primary: alreadySent ? '받은 인증번호 입력하기' : '인증번호 받기',
+      validate: () => ({ ok: checkPhone(s.phone).ok, hint: '휴대전화 번호를 바르게 입력해 주세요' }),
+      onNext: () => {
+        if (!alreadySent) {
+          s.sendCount = 1;
+          s.sentAt = Date.now();
+        }
+        ctx.go('verify');
+      },
+    };
+  },
+};
+
+
+});
+__define('js/screens/shared.js', function (exports, __require) {
+// 정보 확인 화면에서 쓰는 '입력한 정보' 요약
+const { summaryList } = __require('js/components/summary.js');
+const { idTypeLabel, genderLabel } = __require('js/state.js');
+const { formatBirth, formatPhone } = __require('js/validators.js');
+const FIELDS = {
+  idType: ['아이디 유형', (s) => idTypeLabel[s.idType]],
+  name: ['이름', (s) => s.name],
+  birth: ['생년월일', (s) => formatBirth(s.birth)],
+  gender: ['성별', (s) => genderLabel[s.gender]],
+  phone: ['휴대전화 번호', (s) => formatPhone(s.phone)],
+};
+
+/** keys 순서대로 요약을 만들고, '수정'을 누르면 그 화면에 갔다가 돌아옴 */
+function fullInfo(ctx, keys) {
+  return summaryList(keys.map((key) => {
+    const [label, read] = FIELDS[key];
+    return { label, value: read(ctx.state), onEdit: () => ctx.edit(key) };
+  }));
+}
+
+exports.fullInfo = fullInfo;
+
+});
+__define('js/screens/terms.js', function (exports, __require) {
+// 01 약관 동의: 필수/선택 분리, 안내문 접기, '보기'는 바텀시트
+const { h } = __require('js/dom.js');
+const { allAgree, checkRow } = __require('js/components/checks.js');
+const { openSheet } = __require('js/components/sheet.js');
+const { TERMS, SHEET_NOTE } = __require('js/screens/content.js');
+const KEYS = ['required', 'location', 'privacy', 'ads'];
+
+exports.default = {
+  id: 'terms',
+  step: 1,
+  title: '회원가입을 위해 약관에 동의해 주세요',
+
+  render(ctx) {
+    const t = ctx.state.terms;
+    const rows = {};
+
+    const all = allAgree({
+      title: '전체 동의하기',
+      desc: '필수 1개와 선택 항목(위치기반서비스, 개인정보 수집, 광고성 정보 수신)에 모두 동의해요.',
+      onToggle: (on) => {
+        KEYS.forEach((k) => { t[k] = on; });
+        sync();
+      },
+    });
+
+    function setTerm(key, on) {
+      t[key] = on;
+      if (key === 'privacy' && !on) t.ads = false; // 광고 수신은 개인정보 동의에 딸린 항목
+      if (key === 'ads' && on) t.privacy = true;
+      sync();
+    }
+
+    for (const key of KEYS) {
+      const item = TERMS[key];
+      rows[key] = checkRow({
+        label: item.label,
+        sub: item.sub,
+        onToggle: (on) => setTerm(key, on),
+        onView: item.sheet && (() => openSheet({
+          ...item.sheet,
+          note: SHEET_NOTE,
+          actionLabel: '동의하고 닫기',
+          onAction: () => setTerm(key, true),
+        })),
+      });
+    }
+
+    function sync(refresh = true) {
+      all.set(KEYS.every((k) => t[k]));
+      KEYS.forEach((k) => rows[k].set(t[k]));
+      if (refresh) ctx.refresh();
+    }
+    sync(false);
+
+    const body = [
+      all.el,
+      h('div', { class: 'group' }, h('p', { class: 'group-label' }, '필수'), rows.required.el),
+      h('div', { class: 'group' }, h('p', { class: 'group-label' }, '선택'),
+        rows.location.el, rows.privacy.el, rows.ads.el),
+      h('details', { class: 'disclosure' },
+        h('summary', {}, '개인정보 수집 및 이용 안내'),
+        h('p', {}, '회원 식별과 본인 확인을 위해 이름, 생년월일, 성별, 휴대전화 번호를 받아요. 자세한 내용은 [선택] 개인정보 수집 및 이용의 "보기"에서 볼 수 있어요.')),
+    ];
+
+    return {
+      body,
+      primary: '다음',
+      validate: () => ({ ok: t.required, hint: '필수 약관에 동의하면 다음으로 넘어갈 수 있어요' }),
+      onNext: () => ctx.next('idType'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/userId.js', function (exports, __require) {
+// 09 아이디: 입력하는 동안 사용 가능 여부 안내
+const { field } = __require('js/components/field.js');
+const { checkUserId } = __require('js/validators.js');
+exports.default = {
+  id: 'userId',
+  step: 4,
+  title: '사용할 아이디를 만들어 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    const input = field({
+      id: 'userId',
+      label: '아이디',
+      value: s.userId,
+      autocomplete: 'username',
+      maxlength: 21,
+      format: (v) => v.toLowerCase().replace(/\s/g, ''),
+      onValue: (v) => {
+        s.userId = v;
+        update();
+      },
+    });
+
+    function update(refresh = true) {
+      input.apply(checkUserId(s.userId));
+      if (refresh) ctx.refresh();
+    }
+    update(false);
+
+    return {
+      sub: '이미 쓰이는 아이디 예시: admin, hong123',
+      body: input.el,
+      primary: '다음',
+      validate: () => ({ ok: checkUserId(s.userId).ok, hint: '사용할 수 있는 아이디를 입력해 주세요' }),
+      onNext: () => ctx.next('password'),
+    };
+  },
+};
+
+
+});
+__define('js/screens/verify.js', function (exports, __require) {
+// 07 휴대폰 인증 (발송 후): 보낸 번호 안내, 남은 시간, 문자가 안 올 때 해결 방법
+const { h } = __require('js/dom.js');
+const { field } = __require('js/components/field.js');
+const { notice } = __require('js/components/notice.js');
+const { digits, formatPhone } = __require('js/validators.js');
+const { TEST_CODES, CODE_SECONDS } = __require('js/screens/content.js');
+const pad = (n) => String(n).padStart(2, '0');
+
+exports.default = {
+  id: 'verify',
+  step: 3,
+  title: '문자로 받은 인증번호를 입력해 주세요',
+
+  render(ctx) {
+    const s = ctx.state;
+    s.sentAt ??= Date.now();
+    let code = '';
+
+    const input = field({
+      id: 'code',
+      label: '인증번호 6자리',
+      inputmode: 'numeric',
+      maxlength: 6,
+      autocomplete: 'one-time-code',
+      format: (v) => digits(v).slice(0, 6),
+      onValue: (v) => {
+        code = v;
+        input.setStatus('default', '');
+        ctx.refresh();
+      },
+    });
+
+    const secondsLeft = () =>
+      Math.max(0, CODE_SECONDS - Math.floor((Date.now() - s.sentAt) / 1000));
+
+    const time = h('span', { class: 'timer-time', 'aria-live': 'off' });
+    const messages = h('div', { class: 'stack' });
+
+    const resend = h('button', {
+      type: 'button',
+      class: 'link',
+      onclick: () => messages.replaceChildren(notice('error',
+        '이번 달 인증번호 발송 횟수(1회)를 모두 썼어요. 이미 받은 인증번호를 입력하거나 고객센터에 문의해 주세요.')),
+    }, '인증번호 다시 받기');
+
+    const timer = h('div', { class: 'timer' }, h('span', {}, '남은 시간 ', time), resend);
+
+    const restartTimer = h('button', {
+      type: 'button',
+      class: 'link',
+      hidden: true,
+      onclick: () => {
+        s.sentAt = Date.now();
+        restartTimer.hidden = true;
+        input.input.disabled = false;
+        input.setStatus('default', '');
+        tick();
+        input.input.focus();
+      },
+    }, '체험용: 시간 다시 시작');
+
+    function tick(refresh = true) {
+      const left = secondsLeft();
+      time.textContent = `${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
+      timer.classList.toggle('expired', left === 0);
+      if (left === 0 && !input.input.disabled) {
+        input.input.disabled = true;
+        input.setStatus('error', '입력 시간이 지났어요.');
+        restartTimer.hidden = false;
+      }
+      if (refresh) ctx.refresh();
+    }
+    tick(false);
+    const interval = setInterval(tick, 1000);
+
+    return {
+      sub: `${formatPhone(s.phone)}로 인증번호를 보냈어요`,
+      body: [
+        input.el,
+        timer,
+        restartTimer,
+        messages,
+        notice('info', '문자가 오지 않나요? 스팸 문자함을 먼저 확인해 주세요. 이번 달 인증 횟수를 이미 썼다면 고객센터에서 도움을 받을 수 있어요.'),
+      ],
+      primary: '인증하기',
+      validate: () => {
+        if (secondsLeft() === 0) return { ok: false, hint: '시간이 지나 인증할 수 없어요' };
+        return { ok: code.length === 6, hint: '문자로 받은 6자리를 입력해 주세요' };
+      },
+      onNext: () => {
+        if (TEST_CODES.includes(code)) {
+          s.verified = true;
+          ctx.next('confirm');
+        } else {
+          input.setStatus('error', '인증번호가 맞지 않아요. 문자로 받은 6자리를 다시 확인해 주세요.');
+        }
+      },
+      cleanup: () => clearInterval(interval),
+    };
+  },
+};
+
+
+});
+__define('js/state.js', function (exports, __require) {
+// 가입 과정에서 입력한 값 (예시 데이터로 시작, 브라우저 밖으로 나가지 않음)
+const defaults = () => ({
+  terms: { required: false, location: false, privacy: false, ads: false },
+  idType: 'real',
+  name: '홍길동',
+  birth: '20000101',
+  gender: 'female',
+  phone: '01012345678',
+  sendCount: 0,
+  sentAt: null,
+  verified: false,
+  userId: 'hong_gildong',
+  password: '',
+  passkey: false,
+  returnTo: null, // '수정'으로 들어왔을 때 돌아갈 화면
+});
+
+const state = defaults();
+
+function resetState() {
+  Object.assign(state, defaults());
+}
+
+const idTypeLabel = { real: '실명 인증 아이디', basic: '일반 아이디' };
+const genderLabel = { male: '남성', female: '여성', none: '선택 안 함' };
+
+exports.state = state;
+exports.resetState = resetState;
+exports.idTypeLabel = idTypeLabel;
+exports.genderLabel = genderLabel;
+
+});
+__define('js/validators.js', function (exports, __require) {
+// 입력값 형식 맞추기와 검사
+// 검사 결과: { ok, error, msg } — ok면 통과, error면 빨간 안내, 둘 다 아니면 아직 입력 중
+
+const digits = (v) => String(v ?? '').replace(/\D/g, '');
+
+/* 이름 */
+const NAME_HELP = '한글, 영문 대/소문자만 쓸 수 있어요. (특수기호, 공백 제외)';
+function checkName(v) {
+  if (!v) return { ok: false, error: false, msg: NAME_HELP };
+  if (!/^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z]+$/.test(v)) {
+    return { ok: false, error: true, msg: '특수기호나 공백은 빼고 입력해 주세요.' };
+  }
+  return { ok: /^[가-힣a-zA-Z]+$/.test(v), error: false, msg: NAME_HELP };
+}
+
+/* 생년월일 */
+function formatBirth(v) {
+  const d = digits(v).slice(0, 8);
+  if (d.length <= 4) return d;
+  if (d.length <= 6) return `${d.slice(0, 4)}.${d.slice(4)}`;
+  return `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}`;
+}
+
+function checkBirth(v) {
+  const d = digits(v);
+  if (d.length < 8) {
+    return { ok: false, error: false, msg: '생년월일 8자리를 입력해 주세요. 예) 20000101' };
+  }
+  const y = +d.slice(0, 4);
+  const m = +d.slice(4, 6);
+  const day = +d.slice(6, 8);
+  const date = new Date(y, m - 1, day);
+  const real = date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === day;
+  if (!real || y < 1900) return { ok: false, error: true, msg: '없는 날짜예요. 다시 확인해 주세요.' };
+  if (date > new Date()) return { ok: false, error: true, msg: '오늘 이후 날짜는 입력할 수 없어요.' };
+  return { ok: true, error: false, msg: '' };
+}
+
+/* 휴대전화 번호 */
+const PHONE_HELP = "'-' 없이 숫자만 입력해도 돼요";
+function formatPhone(v) {
+  const d = digits(v).slice(0, 11);
+  if (d.length < 4) return d;
+  if (d.length < 8) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+}
+
+function checkPhone(v) {
+  const d = digits(v);
+  if (d.length < 10) return { ok: false, error: false, msg: PHONE_HELP };
+  if (!/^01[016789]\d{7,8}$/.test(d)) {
+    return { ok: false, error: true, msg: '휴대전화 번호 형식이 아니에요. 010으로 시작하는지 확인해 주세요.' };
+  }
+  return { ok: true, error: false, msg: '' };
+}
+
+/* 아이디 */
+const ID_HELP = '5~20자의 영문 소문자, 숫자, 특수기호 _ - 만 쓸 수 있어요.';
+const TAKEN = ['admin', 'hong123', 'test01', 'user01'];
+function checkUserId(v) {
+  if (!v) return { ok: false, error: false, msg: ID_HELP };
+  if (!/^[a-z0-9_-]+$/.test(v)) {
+    return { ok: false, error: true, msg: '영문 소문자, 숫자, 특수기호 _ - 만 쓸 수 있어요.' };
+  }
+  if (v.length < 5) return { ok: false, error: false, msg: ID_HELP };
+  if (v.length > 20) return { ok: false, error: true, msg: '20자 이하로 입력해 주세요.' };
+  if (TAKEN.includes(v)) {
+    return { ok: false, error: true, msg: `이미 사용 중인 아이디예요. 예) ${v}_01` };
+  }
+  return { ok: true, error: false, msg: '사용할 수 있는 아이디예요' };
+}
+
+/* 비밀번호 */
+const PASSWORD_RULES = [
+  { label: '8~16자', hint: '8~16자로 입력해 주세요', test: (v) => v.length >= 8 && v.length <= 16 },
+  { label: '영문', hint: '영문을 1개 이상 넣어 주세요', test: (v) => /[A-Za-z]/.test(v) },
+  { label: '숫자', hint: '숫자를 1개 이상 넣어 주세요', test: (v) => /\d/.test(v) },
+  { label: '특수문자', hint: '특수문자를 1개 이상 넣어 주세요', test: (v) => /[^A-Za-z0-9\s]/.test(v) },
+];
+
+function passwordStrength(v) {
+  if (!v) return { label: '—', tone: '' };
+  const met = PASSWORD_RULES.filter((r) => r.test(v)).length;
+  if (met <= 2) return { label: '사용 불가', tone: 'bad' };
+  if (met === 3) return { label: '보통', tone: '' };
+  return { label: '안전', tone: 'good' };
+}
+
+exports.digits = digits;
+exports.checkName = checkName;
+exports.formatBirth = formatBirth;
+exports.checkBirth = checkBirth;
+exports.formatPhone = formatPhone;
+exports.checkPhone = checkPhone;
+exports.checkUserId = checkUserId;
+exports.PASSWORD_RULES = PASSWORD_RULES;
+exports.passwordStrength = passwordStrength;
+
+});
+  __require('js/main.js');
+})();
+</script>
+</body>
+</html>
