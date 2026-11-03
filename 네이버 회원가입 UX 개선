@@ -13,10 +13,10 @@
 
 | | | |
 |---|---|---|
-| ![약관동의](images/before/01_terms.png) | ![이름](images/before/02_name.png) | ![생년월일](images/before/03_birthdate.png) |
-| ![성별](images/before/04_gender.png) | ![휴대폰 인증](images/before/05_phone.png) | ![정보 확인](images/before/11_confirm.png) |
-| ![아이디](images/before/06_id.png) | ![비밀번호](images/before/07_password.png) | ![패스키](images/before/08_passkey.png) |
-| ![환영](images/before/09_welcome.png) | ![생년월일 2](images/before/10_birthdate_2.png) | |
+| ![약관동의](naver-signup-flow/images/before/01_terms.png) | ![이름](naver-signup-flow/images/before/02_name.png) | ![생년월일](naver-signup-flow/images/before/03_birthdate.png) |
+| ![성별](naver-signup-flow/images/before/04_gender.png) | ![휴대폰 인증](naver-signup-flow/images/before/05_phone.png) | ![정보 확인](naver-signup-flow/images/before/11_confirm.png) |
+| ![아이디](naver-signup-flow/images/before/06_id.png) | ![비밀번호](naver-signup-flow/images/before/07_password.png) | ![패스키](naver-signup-flow/images/before/08_passkey.png) |
+| ![환영](naver-signup-flow/images/before/09_welcome.png) | ![생년월일 2](naver-signup-flow/images/before/10_birthdate_2.png) | |
 
 ## 2. 문제 분석
 
