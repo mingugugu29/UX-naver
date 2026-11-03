@@ -1,0 +1,14 @@
+<svg width="375" height="812" viewBox="0 0 375 812" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="375" height="812" fill="white"/>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="26" letter-spacing="0em"><tspan x="20" y="80.2422">‹</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="17" font-weight="600" letter-spacing="0em"><tspan x="41" y="77.043">회원가입</tspan></text>
+<text fill="#03C75A" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="342" y="77.3984">N</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="20" font-weight="bold" letter-spacing="0em"><tspan x="20" y="153.609">아이디 유형을 선택해주세요</tspan></text>
+<rect x="20.5" y="197.5" width="334" height="56" rx="7.5" stroke="#E3E5E8"/>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="16" font-weight="500" letter-spacing="0em"><tspan x="128" y="231.188">실명 아이디로 가입</tspan></text>
+<rect x="20.5" y="266.5" width="334" height="56" rx="7.5" stroke="#E3E5E8"/>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="16" font-weight="500" letter-spacing="0em"><tspan x="121" y="300.188">비실명 아이디로 가입</tspan></text>
+<rect x="20" y="335" width="335" height="85" rx="8" fill="#FFF1F1"/>
+<text fill="#E5484D" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="13" font-weight="bold" letter-spacing="0em"><tspan x="34" y="361.121">⚠ 문제점</tspan></text>
+<text fill="#B42318" style="white-space: pre" xml:space="preserve" font-family="Pretendard" font-size="13" letter-spacing="0em"><tspan x="34" y="384.121">· 두 아이디의 차이를 설명하지 않음 → 따로 검색해야 앎&#10;</tspan><tspan x="34" y="403.121">· 다음 화면에서 실명 여부를 한 번 더 물어봄</tspan></text>
+</svg>
