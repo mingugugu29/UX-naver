@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>회원가입 사용성 측정 결과</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/stats.css">
+</head>
+<body>
+<div class="page stats-page">
+  <header class="topbar">
+    <a class="wordmark" href="./">회원가입</a>
+    <span class="proto-chip">사용성 측정 결과</span>
+  </header>
+
+  <section class="stats-head">
+    <h1>개선안을 실제로 써 보면 어떨까?</h1>
+    <p>프로토타입을 체험한 사람들의 기록이에요. 화면에 머문 시간, 오류, 멈춘 곳만 남기고 입력한 값은 기록하지 않아요.</p>
+    <div class="stats-actions">
+      <span id="updated" class="muted"></span>
+      <button id="reload" type="button" class="link">새로고침</button>
+      <a class="link" href="./">프로토타입 체험하기</a>
+    </div>
+  </section>
+
+  <main id="stats" aria-live="polite">
+    <p class="muted">불러오는 중…</p>
+  </main>
+</div>
+
+<script type="module" src="js/stats.js"></script>
+</body>
+</html>

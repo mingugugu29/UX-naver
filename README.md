@@ -80,7 +80,32 @@
 - [뉴데일리 – 네이버 본인확인기관 심사](https://biz.newdaily.co.kr/site/data/html/2024/06/10/2024061000107.amp.html)
 - [Seoul Start – Naver account guide](https://seoulstart.com/guides/naver-account-guide)
 
-## 5. 남은 과제
+## 5. 백엔드와 사용성 측정
 
+개선안이 "좋아질 것 같다"에서 끝나지 않도록, 프로토타입에 서버를 붙여 **규칙은 실제로 지키고, 효과는 실제로 재요.**
+
+| 개선안 | 서버가 하는 일 |
+|---|---|
+| 인증 월 1회를 미리 안내 (제약) | 같은 번호는 한 달에 1번만 발급, 3분 지나면 만료 |
+| 아이디 사용 가능 여부 즉시 안내 (피드백) | DB에서 중복 확인, 이미 쓰면 비슷한 빈 아이디 제안 |
+| 확정 전 정보 확인 (오류 예방) | 가입 저장, 중복이면 거절하고 이유 안내 |
+| 효과 측정 | 화면별 머문 시간·오류·멈춘 곳·완료 시간 기록 → `/stats` 결과 페이지 |
+
+- 구성: Node.js + Express + SQLite, 기능별 파일 분리 → [server/README.md](naver-signup-flow/server/README.md)
+- 이름·생년월일·비밀번호는 저장하지 않고, 전화번호는 해시로만 남겨요.
+- 서버가 없으면(파일로 열면) 프로토타입은 화면 안에서만 동작해요.
+
+**실행**
+```bash
+cd naver-signup-flow/server
+npm install
+npm start      # 프로토타입 http://localhost:3000 · 측정 결과 http://localhost:3000/stats
+```
+
+**공개 주소**: [Render](https://render.com)에서 New › Blueprint로 이 저장소를 고르면 `render.yaml`대로 배포돼요.
+
+## 6. 남은 과제
+
+- 5명 이상 사용성 테스트를 하고 측정 결과를 이 문서에 정리하기
+- 개선 전 흐름을 재현해 같은 방식으로 기록하고 개선 전/후 비교하기
 - 카드 설명, 인증 횟수 제한, 약관 요약 문구는 실제 정책을 확인해 다듬기
-- 화면 간 프로토타입 연결 후 사용성 테스트

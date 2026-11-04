@@ -1,6 +1,7 @@
 // 밑줄형 입력창: 상태(default · error · success)에 따라 밑줄, 아이콘, 안내 문구가 바뀜
 import { h } from '../dom.js';
 import { icons } from '../icons.js';
+import { fieldError } from '../analytics.js';
 
 export function field({
   id,
@@ -59,7 +60,7 @@ export function field({
   const el = h('div', { class: 'field', 'data-status': 'default' },
     h('label', { class: 'field-label', htmlFor: id }, label),
     h('div', { class: 'field-row' },
-      prefix && h('span', { class: 'field-prefix' }, prefix),
+      prefix && (prefix instanceof Node ? prefix : h('span', { class: 'field-prefix' }, prefix)),
       input, clear, status, eye),
     helper,
   );
@@ -77,6 +78,10 @@ export function field({
   input.addEventListener('input', emit);
 
   function setStatus(kind, msg) {
+    // 새로 오류가 뜬 순간만 측정에 기록 (같은 오류가 타이핑마다 쌓이지 않게)
+    if (kind === 'error' && (el.dataset.status !== 'error' || helper.textContent !== (msg || ''))) {
+      fieldError(label, msg || '');
+    }
     el.dataset.status = kind;
     status.innerHTML = kind === 'success' ? icons.ok : kind === 'error' ? icons.err : '';
     helper.textContent = msg || '';

@@ -1,0 +1,14 @@
+# Render 배포 설정 (Dashboard › New › Blueprint 에서 이 저장소를 고르면 자동으로 읽는다)
+services:
+  - type: web
+    name: ux-naver-signup
+    runtime: node
+    plan: free
+    buildCommand: cd naver-signup-flow/server && npm install
+    startCommand: cd naver-signup-flow/server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DEMO_MODE
+        value: "true"

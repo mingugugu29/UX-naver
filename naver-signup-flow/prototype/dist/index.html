@@ -144,6 +144,23 @@ body {
 }
 .proto-note b { color: var(--fg-2); }
 
+/* 서버 연결 상태 */
+.server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+}
+.server-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg-off);
+}
+.server-status[data-online="true"]::before { background: var(--brand); }
+.proto-note a.link { font-size: 12px; }
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -281,6 +298,43 @@ button { font-family: var(--font); }
   box-shadow: 0 1px 0 var(--error);
 }
 .field-prefix { font-size: 17px; color: var(--fg-2); flex: none; }
+
+/* 국가 번호 선택: 보이는 건 '+82 ⌄', 실제 선택은 위에 투명하게 겹친 기본 목록 */
+.country {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 0;
+  margin-right: 2px;
+  border-right: 1px solid var(--line);
+  font-size: 17px;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.country-caret {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+.country-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+.country:hover { color: var(--fg); }
+.country:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .field-input {
   flex: 1;
   min-width: 0;
@@ -592,8 +646,11 @@ button { font-family: var(--font); }
   <main id="app" class="card" aria-live="polite"></main>
 
   <p class="proto-note">
-    입력한 내용은 저장되거나 전송되지 않아요. 테스트 인증번호는 <b>123123</b>이에요.
+    이름·생년월일·전화번호·비밀번호는 저장하지 않아요. 테스트 인증번호는 <b>123123</b>이에요.
     <button id="restart" type="button" class="link">처음부터 다시</button>
+    <br>
+    <span id="server-status" class="server-status">서버 확인 중…</span>
+    <a id="stats-link" class="link" href="stats.html" hidden>측정 결과 보기</a>
   </p>
 </div>
 <script>
@@ -607,6 +664,184 @@ button { font-family: var(--font); }
     }
     return cache[path];
   }
+__define('js/analytics.js', function (exports, __require) {
+// 사용성 측정: 화면별로 머문 시간, 오류, 가입 완료까지 걸린 시간을 기록한다
+// 입력한 값(이름, 번호 등)은 기록하지 않는다.
+const { sendEvents, status } = __require('js/api.js');
+const VARIANT = 'after'; // 개선안. 개선 전 흐름을 재현하면 'before'로 기록한다
+
+let sessionId = null;
+let startedAt = 0;
+let currentScreen = null;
+let screenStartedAt = 0;
+let queue = [];
+
+const now = () => performance.now();
+const newId = () =>
+  (crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+
+function flush() {
+  if (!sessionId || !queue.length) return;
+  if (status() === null) return; // 서버 확인 전이면 모아 두었다가 나중에 보낸다
+  const events = queue;
+  queue = [];
+  sendEvents({ sessionId, variant: VARIANT, events });
+}
+
+function track(type, data = {}) {
+  if (!sessionId) return;
+  queue.push({ type, ...data });
+  if (queue.length >= 10) flush();
+}
+
+/** 새 체험 시작 (처음 열 때, '홈으로 이동'을 눌렀을 때) */
+function startSession() {
+  flush();
+  sessionId = newId();
+  startedAt = now();
+  currentScreen = null;
+  track('session_start');
+}
+
+function enterScreen(screen) {
+  leaveScreen();
+  currentScreen = screen;
+  screenStartedAt = now();
+  track('screen_view', { screen });
+}
+
+function leaveScreen() {
+  if (!currentScreen) return;
+  track('screen_leave', { screen: currentScreen, durationMs: now() - screenStartedAt });
+  currentScreen = null;
+}
+
+/** 입력창에 빨간 오류가 뜰 때 (어떤 칸에서 어떤 오류가 많은지 보기 위해) */
+function fieldError(label, message) {
+  track('field_error', { screen: currentScreen, detail: `${label}: ${message}` });
+}
+
+/** 버튼을 눌렀는데 서버가 거절했을 때 (인증번호 불일치, 월 1회 초과 등) */
+function actionError(message) {
+  track('action_error', { screen: currentScreen, detail: message });
+}
+
+function complete() {
+  leaveScreen();
+  track('signup_complete', { durationMs: now() - startedAt });
+  flush();
+}
+
+const getSessionId = () => sessionId;
+
+// 창을 닫거나 다른 탭으로 갈 때 남은 기록을 보내고, 돌아오면 시간을 다시 잰다
+let pausedScreen = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    pausedScreen = currentScreen;
+    leaveScreen();
+    flush();
+  } else if (pausedScreen && !currentScreen) {
+    currentScreen = pausedScreen;
+    screenStartedAt = now();
+    pausedScreen = null;
+  }
+});
+
+exports.flush = flush;
+exports.track = track;
+exports.startSession = startSession;
+exports.enterScreen = enterScreen;
+exports.leaveScreen = leaveScreen;
+exports.fieldError = fieldError;
+exports.actionError = actionError;
+exports.complete = complete;
+exports.getSessionId = getSessionId;
+
+});
+__define('js/api.js', function (exports, __require) {
+// 서버 API 호출
+// 서버가 없으면(파일로 열었거나 Claude 링크로 볼 때) 각 함수가 null을 돌려주고,
+// 화면은 지금까지처럼 브라우저 안에서만 동작한다.
+
+const TIMEOUT_MS = 2500;
+let online = null; // null: 아직 확인 전 / true: 서버 연결됨 / false: 서버 없음
+let demoMode = false;
+
+async function request(path, { method = 'GET', body } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(path, {
+      method,
+      signal: controller.signal,
+      headers: body ? { 'content-type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!(res.headers.get('content-type') || '').includes('application/json')) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 서버가 켜져 있는지 한 번 확인 */
+const connect = async () => {
+  if (location.protocol === 'file:') {
+    online = false;
+    return false;
+  }
+  const data = await request('/api/health');
+  online = Boolean(data && data.ok);
+  demoMode = Boolean(data && data.demoMode);
+  return online;
+};
+
+const status = () => online;
+const isOnline = () => online === true;
+const isDemoMode = () => demoMode;
+
+/** 아이디 사용 가능 여부: { available, message } */
+const checkId = async (userId) =>
+  isOnline() ? request(`/api/ids/check?userId=${encodeURIComponent(userId)}`) : null;
+
+/** 인증번호 받기: { status: 'sent' | 'limit' | 'invalid', message, demoCode } */
+const sendCode = async (country, phone) =>
+  isOnline() ? request('/api/verify/send', { method: 'POST', body: { country, phone } }) : null;
+
+/** 인증번호 확인: { verified, message } */
+const confirmCode = async (country, phone, code) =>
+  isOnline() ? request('/api/verify/confirm', { method: 'POST', body: { country, phone, code } }) : null;
+
+/** 가입 저장: { ok, message } */
+const signup = async (payload) =>
+  isOnline() ? request('/api/signup', { method: 'POST', body: payload }) : null;
+
+/** 측정 기록 보내기 (페이지를 닫는 순간에도 전송되게 sendBeacon 사용) */
+function sendEvents(payload) {
+  if (!isOnline()) return false;
+  const body = JSON.stringify(payload);
+  if (navigator.sendBeacon && navigator.sendBeacon('/api/events', new Blob([body], { type: 'application/json' }))) {
+    return true;
+  }
+  fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true })
+    .catch(() => {});
+  return true;
+}
+
+exports.connect = connect;
+exports.status = status;
+exports.isOnline = isOnline;
+exports.isDemoMode = isDemoMode;
+exports.checkId = checkId;
+exports.sendCode = sendCode;
+exports.confirmCode = confirmCode;
+exports.signup = signup;
+exports.sendEvents = sendEvents;
+
+});
 __define('js/components/checks.js', function (exports, __require) {
 // 약관 체크: 전체 동의 박스와 항목 한 줄
 const { h, icon } = __require('js/dom.js');
@@ -729,10 +964,40 @@ exports.choiceCards = choiceCards;
 exports.segments = segments;
 
 });
+__define('js/components/countrySelect.js', function (exports, __require) {
+// 국가 번호 선택: 입력창 앞에는 '+82 ⌄'만 짧게, 누르면 기기 기본 목록(나라 이름 + 번호)이 열림
+const { h } = __require('js/dom.js');
+function countrySelect({ countries, value, onChange }) {
+  const shown = h('span', { class: 'country-code' });
+
+  const select = h('select', {
+    class: 'country-native',
+    'aria-label': '국가 번호',
+    onchange: () => {
+      sync();
+      onChange(select.value);
+    },
+  }, countries.map((c) => h('option', { value: c.code + '|' + c.name }, `${c.name} ${c.code}`)));
+
+  const current = countries.find((c) => c.code === value.code && c.name === value.name) || countries[0];
+  select.value = current.code + '|' + current.name;
+
+  function sync() {
+    shown.textContent = select.value.split('|')[0];
+  }
+  sync();
+
+  return h('span', { class: 'country' }, shown, h('span', { class: 'country-caret', 'aria-hidden': 'true' }), select);
+}
+
+exports.countrySelect = countrySelect;
+
+});
 __define('js/components/field.js', function (exports, __require) {
 // 밑줄형 입력창: 상태(default · error · success)에 따라 밑줄, 아이콘, 안내 문구가 바뀜
 const { h } = __require('js/dom.js');
 const { icons } = __require('js/icons.js');
+const { fieldError } = __require('js/analytics.js');
 function field({
   id,
   label,
@@ -790,7 +1055,7 @@ function field({
   const el = h('div', { class: 'field', 'data-status': 'default' },
     h('label', { class: 'field-label', htmlFor: id }, label),
     h('div', { class: 'field-row' },
-      prefix && h('span', { class: 'field-prefix' }, prefix),
+      prefix && (prefix instanceof Node ? prefix : h('span', { class: 'field-prefix' }, prefix)),
       input, clear, status, eye),
     helper,
   );
@@ -808,6 +1073,10 @@ function field({
   input.addEventListener('input', emit);
 
   function setStatus(kind, msg) {
+    // 새로 오류가 뜬 순간만 측정에 기록 (같은 오류가 타이핑마다 쌓이지 않게)
+    if (kind === 'error' && (el.dataset.status !== 'error' || helper.textContent !== (msg || ''))) {
+      fieldError(label, msg || '');
+    }
     el.dataset.status = kind;
     status.innerHTML = kind === 'success' ? icons.ok : kind === 'error' ? icons.err : '';
     helper.textContent = msg || '';
@@ -1002,9 +1271,25 @@ exports.icons = icons;
 __define('js/main.js', function (exports, __require) {
 // 시작점
 const { start, ctx } = __require('js/router.js');
+const { connect, isDemoMode } = __require('js/api.js');
+const { flush } = __require('js/analytics.js');
 start();
 
 document.getElementById('restart').addEventListener('click', () => ctx.restart());
+
+// 서버 연결 확인 → 화면 아래에 상태 표시, 모아 둔 측정 기록 보내기
+const badge = document.getElementById('server-status');
+connect().then((online) => {
+  if (badge) {
+    badge.dataset.online = String(online);
+    badge.textContent = online
+      ? `서버 연결됨 · 사용성 측정 중${isDemoMode() ? ' · 체험 모드' : ''}`
+      : '오프라인 체험 (서버 없이 화면만 동작)';
+  }
+  const statsLink = document.getElementById('stats-link');
+  if (statsLink) statsLink.hidden = !online;
+  flush();
+});
 
 
 });
@@ -1014,11 +1299,30 @@ const { h, icon } = __require('js/dom.js');
 const { state, resetState } = __require('js/state.js');
 const { progress } = __require('js/components/progress.js');
 const { screens } = __require('js/screens/index.js');
+const { startSession, enterScreen } = __require('js/analytics.js');
 const app = document.getElementById('app');
 const history = [];
 let current = null;
 let view = null;
 let foot = null;
+let busy = false; // 서버 응답을 기다리는 중 (버튼 두 번 누름 방지)
+
+/** 하단 버튼: 서버를 부르는 화면이면 응답이 올 때까지 버튼을 잠근다 */
+async function runNext() {
+  if (!foot || foot.primary.disabled || busy) return;
+  const result = view.onNext();
+  if (!result || typeof result.then !== 'function') return;
+  busy = true;
+  foot.primary.disabled = true;
+  foot.primary.setAttribute('aria-busy', 'true');
+  try {
+    await result;
+  } finally {
+    busy = false;
+    foot?.primary.removeAttribute('aria-busy');
+    ctx.refresh();
+  }
+}
 
 const ctx = {
   state,
@@ -1050,7 +1354,7 @@ const ctx = {
   },
   /** 입력이 바뀌면 하단 버튼과 안내 문구를 다시 계산 */
   refresh() {
-    if (!foot) return;
+    if (!foot || busy) return;
     const result = view.validate ? view.validate() : { ok: true };
     foot.primary.disabled = !result.ok;
     foot.hint.textContent = result.ok ? '' : result.hint || '';
@@ -1060,6 +1364,7 @@ const ctx = {
     resetState();
     history.length = 0;
     current = null;
+    startSession();
     render(screens.order[0]);
   },
 };
@@ -1070,6 +1375,7 @@ function render(id) {
 
   const screen = screens.byId[id];
   current = screen;
+  enterScreen(id);
   view = screen.render(ctx);
 
   const showBack = !screen.noBack && history.length > 0;
@@ -1081,7 +1387,7 @@ function render(id) {
 
   const title = h('h1', { tabIndex: -1 }, view.title ?? screen.title);
   const hint = h('p', { class: 'hint', hidden: true });
-  const primary = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => view.onNext() }, view.primary);
+  const primary = h('button', { type: 'button', class: 'btn btn-primary', onclick: runNext }, view.primary);
   const secondary = view.secondary &&
     h('button', { type: 'button', class: 'btn btn-secondary', onclick: view.secondary.onClick }, view.secondary.label);
 
@@ -1105,11 +1411,12 @@ app.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.isComposing) return;
   if (foot && !foot.primary.disabled) {
     e.preventDefault();
-    view.onNext();
+    runNext();
   }
 });
 
 function start() {
+  startSession();
   render(screens.order[0]);
 }
 
@@ -1244,6 +1551,26 @@ const ID_TYPES = [
   },
 ];
 
+// 휴대폰 인증 국가 번호 (같은 번호를 쓰는 나라는 이름으로 구분)
+const COUNTRIES = [
+  { name: '대한민국', code: '+82' },
+  { name: '미국', code: '+1' },
+  { name: '캐나다', code: '+1' },
+  { name: '일본', code: '+81' },
+  { name: '중국', code: '+86' },
+  { name: '대만', code: '+886' },
+  { name: '홍콩', code: '+852' },
+  { name: '베트남', code: '+84' },
+  { name: '태국', code: '+66' },
+  { name: '필리핀', code: '+63' },
+  { name: '인도네시아', code: '+62' },
+  { name: '싱가포르', code: '+65' },
+  { name: '호주', code: '+61' },
+  { name: '영국', code: '+44' },
+  { name: '독일', code: '+49' },
+  { name: '프랑스', code: '+33' },
+];
+
 // 체험용으로 통과되는 인증번호 (발표용: 123123)
 const TEST_CODES = ['123123', '123456'];
 const CODE_SECONDS = 180;
@@ -1251,6 +1578,7 @@ const CODE_SECONDS = 180;
 exports.TERMS = TERMS;
 exports.SHEET_NOTE = SHEET_NOTE;
 exports.ID_TYPES = ID_TYPES;
+exports.COUNTRIES = COUNTRIES;
 exports.TEST_CODES = TEST_CODES;
 exports.CODE_SECONDS = CODE_SECONDS;
 
@@ -1258,6 +1586,7 @@ exports.CODE_SECONDS = CODE_SECONDS;
 __define('js/screens/done.js', function (exports, __require) {
 // 12 가입 완료: 완료 상태와 다음에 할 일을 분명하게
 const { h, icon } = __require('js/dom.js');
+const { complete } = __require('js/analytics.js');
 exports.default = {
   id: 'done',
   step: null,
@@ -1265,6 +1594,7 @@ exports.default = {
 
   render(ctx) {
     const s = ctx.state;
+    complete(); // 가입 완료까지 걸린 시간을 기록
     const next = s.idType === 'real'
       ? '결제·쇼핑·멤버십을 바로 쓸 수 있어요.'
       : '결제·쇼핑은 처음 쓸 때 본인 인증을 한 번 해 주세요.';
@@ -1274,7 +1604,7 @@ exports.default = {
       title: `${s.userId}님,\n만나서 반가워요!`,
       sub: `가입이 끝났어요. ${next}${s.passkey ? ' 패스키도 설정했어요.' : ''}`,
       body: h('div', { class: 'done-mark' }, icon('done')),
-      primary: '처음부터 다시 체험하기',
+      primary: '홈으로 이동',
       onNext: () => ctx.restart(),
     };
   },
@@ -1433,10 +1763,13 @@ exports.default = {
 
 });
 __define('js/screens/password.js', function (exports, __require) {
-// 10 비밀번호: 조건별 실시간 체크리스트, 무엇이 부족한지 버튼 위에 안내
+// 10 비밀번호: 조건별 실시간 체크리스트, 비밀번호 확인, 무엇이 부족한지 버튼 위에 안내
 const { h, icon } = __require('js/dom.js');
 const { field } = __require('js/components/field.js');
-const { PASSWORD_RULES, passwordStrength } = __require('js/validators.js');
+const { notice } = __require('js/components/notice.js');
+const { PASSWORD_RULES, passwordStrength, checkPasswordConfirm } = __require('js/validators.js');
+const { isOnline, signup } = __require('js/api.js');
+const { actionError, getSessionId } = __require('js/analytics.js');
 exports.default = {
   id: 'password',
   step: 4,
@@ -1447,20 +1780,23 @@ exports.default = {
     const rules = h('ul', { class: 'rules', 'aria-label': '비밀번호 조건' });
     const strength = h('p', { class: 'strength' });
 
-    const input = field({
-      id: 'password',
-      label: '비밀번호',
+    const passwordField = (id, label, key) => field({
+      id,
+      label,
       type: 'password',
-      value: s.password,
+      value: s[key],
       autocomplete: 'new-password',
       maxlength: 16,
       clearable: false,
       toggle: true,
       onValue: (v) => {
-        s.password = v;
+        s[key] = v;
         update();
       },
     });
+
+    const input = passwordField('password', '비밀번호', 'password');
+    const confirm = passwordField('passwordConfirm', '비밀번호 확인', 'passwordConfirm');
 
     function update(refresh = true) {
       rules.replaceChildren(...PASSWORD_RULES.map((rule) => {
@@ -1471,18 +1807,50 @@ exports.default = {
       }));
       const level = passwordStrength(s.password);
       strength.replaceChildren('안전도 ', h('b', { class: level.tone }, level.label));
+      confirm.apply(checkPasswordConfirm(s.password, s.passwordConfirm));
       if (refresh) ctx.refresh();
     }
     update(false);
 
+    // 가입 저장이 거절됐을 때 안내 (예: 그사이 다른 사람이 같은 아이디로 가입)
+    const saveError = h('div', { class: 'stack' });
+
     return {
-      body: [input.el, rules, strength],
+      body: [
+        h('div', { class: 'stack' }, input.el, rules, strength),
+        confirm.el,
+        saveError,
+      ],
       primary: '가입 완료하기',
       validate: () => {
         const missing = PASSWORD_RULES.find((r) => !r.test(s.password));
-        return missing ? { ok: false, hint: `${missing.hint}. 그러면 가입할 수 있어요` } : { ok: true };
+        if (missing) return { ok: false, hint: `${missing.hint}. 그러면 가입할 수 있어요` };
+        if (!checkPasswordConfirm(s.password, s.passwordConfirm).ok) {
+          return { ok: false, hint: '비밀번호 확인 칸에 같은 비밀번호를 입력해 주세요' };
+        }
+        return { ok: true };
       },
-      onNext: () => ctx.go('passkey'),
+      onNext: async () => {
+        // 서버가 있으면 가입 정보를 저장한다 (비밀번호·이름·생년월일·전화번호는 보내지 않음)
+        const r = isOnline()
+          ? await signup({
+            userId: s.userId,
+            idType: s.idType,
+            gender: s.gender,
+            country: s.country.code,
+            sessionId: getSessionId(),
+          })
+          : null;
+        if (r && !r.ok) {
+          actionError(r.message);
+          saveError.replaceChildren(
+            notice('error', `${r.message} 아이디를 바꾼 뒤 다시 시도해 주세요.`),
+            h('button', { type: 'button', class: 'link', onclick: () => ctx.edit('userId') }, '아이디 바꾸기'),
+          );
+          return;
+        }
+        ctx.go('passkey');
+      },
     };
   },
 };
@@ -1490,10 +1858,15 @@ exports.default = {
 
 });
 __define('js/screens/phone.js', function (exports, __require) {
-// 06 휴대폰 인증 (발송 전): 월 1회 제한을 버튼 누르기 전에 안내
+// 06 휴대폰 인증 (발송 전): 국가 번호 선택, 월 1회 제한을 버튼 누르기 전에 안내
+// 서버가 있으면 서버가 인증번호를 만들고 월 1회 제한을 직접 검사한다
 const { field } = __require('js/components/field.js');
 const { notice } = __require('js/components/notice.js');
+const { countrySelect } = __require('js/components/countrySelect.js');
 const { checkPhone, digits, formatPhone } = __require('js/validators.js');
+const { isOnline, sendCode } = __require('js/api.js');
+const { actionError } = __require('js/analytics.js');
+const { COUNTRIES } = __require('js/screens/content.js');
 exports.default = {
   id: 'phone',
   step: 3,
@@ -1502,16 +1875,32 @@ exports.default = {
   render(ctx) {
     const s = ctx.state;
     const alreadySent = s.sendCount > 0;
+    const code = () => s.country.code;
+
+    const country = countrySelect({
+      countries: COUNTRIES,
+      value: s.country,
+      onChange: (v) => {
+        const [c, name] = v.split('|');
+        s.country = { code: c, name };
+        s.verified = false;
+        // 나라가 바뀌면 그 나라 형식으로 다시 맞춤
+        input.input.value = formatPhone(s.phone, code());
+        s.phone = digits(input.input.value);
+        update();
+        input.input.focus();
+      },
+    });
 
     const input = field({
       id: 'phone',
       label: '휴대전화 번호',
-      prefix: '+82',
-      value: formatPhone(s.phone),
+      prefix: country,
+      value: formatPhone(s.phone, code()),
       inputmode: 'tel',
-      maxlength: 13,
+      maxlength: 15,
       autocomplete: 'tel-national',
-      format: formatPhone,
+      format: (v) => formatPhone(v, code()),
       onValue: (v) => {
         const d = digits(v);
         if (d !== s.phone) {
@@ -1523,7 +1912,7 @@ exports.default = {
     });
 
     function update(refresh = true) {
-      input.apply(checkPhone(s.phone));
+      input.apply(checkPhone(s.phone, code()));
       if (refresh) ctx.refresh();
     }
     update(false);
@@ -1532,14 +1921,31 @@ exports.default = {
       ? notice('warn', '이번 달에 이미 인증번호를 받았어요. 문자로 받은 번호를 그대로 입력해 주세요.')
       : notice('warn', '인증번호는 한 달에 1번만 받을 수 있어요. 번호가 맞는지 한 번 더 확인해 주세요.');
 
+    function markSent(result, demoCode = null) {
+      s.sendCount = 1;
+      s.sentAt = Date.now();
+      s.sendResult = result;
+      s.demoCode = demoCode;
+    }
+
     return {
       body: [input.el, limit],
       primary: alreadySent ? '받은 인증번호 입력하기' : '인증번호 받기',
-      validate: () => ({ ok: checkPhone(s.phone).ok, hint: '휴대전화 번호를 바르게 입력해 주세요' }),
-      onNext: () => {
-        if (!alreadySent) {
-          s.sendCount = 1;
-          s.sentAt = Date.now();
+      validate: () => ({ ok: checkPhone(s.phone, code()).ok, hint: '휴대전화 번호를 바르게 입력해 주세요' }),
+      onNext: async () => {
+        if (alreadySent) return ctx.go('verify');
+
+        const r = isOnline() ? await sendCode(code(), s.phone) : null;
+        if (!r) {
+          markSent('local'); // 서버 없음: 화면 안에서만 진행
+        } else if (r.status === 'invalid') {
+          input.apply({ ok: false, error: true, msg: r.message });
+          return;
+        } else if (r.status === 'limit') {
+          actionError(r.message);
+          markSent('limit');
+        } else {
+          markSent('sent', r.demoCode || null);
         }
         ctx.go('verify');
       },
@@ -1553,13 +1959,13 @@ __define('js/screens/shared.js', function (exports, __require) {
 // 정보 확인 화면에서 쓰는 '입력한 정보' 요약
 const { summaryList } = __require('js/components/summary.js');
 const { idTypeLabel, genderLabel } = __require('js/state.js');
-const { formatBirth, formatPhone } = __require('js/validators.js');
+const { formatBirth, displayPhone } = __require('js/validators.js');
 const FIELDS = {
   idType: ['아이디 유형', (s) => idTypeLabel[s.idType]],
   name: ['이름', (s) => s.name],
   birth: ['생년월일', (s) => formatBirth(s.birth)],
   gender: ['성별', (s) => genderLabel[s.gender]],
-  phone: ['휴대전화 번호', (s) => formatPhone(s.phone)],
+  phone: ['휴대전화 번호', (s) => displayPhone(s.phone, s.country.code)],
 };
 
 /** keys 순서대로 요약을 만들고, '수정'을 누르면 그 화면에 갔다가 돌아옴 */
@@ -1650,9 +2056,12 @@ exports.default = {
 
 });
 __define('js/screens/userId.js', function (exports, __require) {
-// 09 아이디: 입력하는 동안 사용 가능 여부 안내
+// 09 아이디: 입력하는 동안 사용 가능 여부 안내 (서버가 있으면 서버 DB에서 중복 확인)
 const { field } = __require('js/components/field.js');
 const { checkUserId } = __require('js/validators.js');
+const { isOnline, checkId } = __require('js/api.js');
+const DEBOUNCE_MS = 300;
+
 exports.default = {
   id: 'userId',
   step: 4,
@@ -1660,6 +2069,9 @@ exports.default = {
 
   render(ctx) {
     const s = ctx.state;
+    let serverResult = null; // 서버 확인 결과 (확인 중이면 null)
+    let timer = null;
+
     const input = field({
       id: 'userId',
       label: '아이디',
@@ -1673,8 +2085,29 @@ exports.default = {
       },
     });
 
+    function askServer(value) {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const r = await checkId(value);
+        if (value !== s.userId) return; // 기다리는 동안 입력이 바뀜
+        serverResult = r
+          ? { ok: r.available, error: !r.available, msg: r.message }
+          : checkUserId(value); // 서버가 응답하지 않으면 화면 규칙으로 대신
+        input.apply(serverResult);
+        ctx.refresh();
+      }, DEBOUNCE_MS);
+    }
+
     function update(refresh = true) {
-      input.apply(checkUserId(s.userId));
+      const local = checkUserId(s.userId);
+      serverResult = null;
+      if (local.ok && isOnline()) {
+        input.setStatus('default', '사용할 수 있는지 확인하고 있어요…');
+        askServer(s.userId);
+      } else {
+        clearTimeout(timer);
+        input.apply(local);
+      }
       if (refresh) ctx.refresh();
     }
     update(false);
@@ -1683,8 +2116,12 @@ exports.default = {
       sub: '이미 쓰이는 아이디 예시: admin, hong123',
       body: input.el,
       primary: '다음',
-      validate: () => ({ ok: checkUserId(s.userId).ok, hint: '사용할 수 있는 아이디를 입력해 주세요' }),
+      validate: () => {
+        const ok = isOnline() ? Boolean(serverResult && serverResult.ok) : checkUserId(s.userId).ok;
+        return { ok, hint: '사용할 수 있는 아이디를 입력해 주세요' };
+      },
       onNext: () => ctx.next('password'),
+      cleanup: () => clearTimeout(timer),
     };
   },
 };
@@ -1696,8 +2133,9 @@ __define('js/screens/verify.js', function (exports, __require) {
 const { h } = __require('js/dom.js');
 const { field } = __require('js/components/field.js');
 const { notice } = __require('js/components/notice.js');
-const { digits, formatPhone } = __require('js/validators.js');
+const { digits, displayPhone } = __require('js/validators.js');
 const { TEST_CODES, CODE_SECONDS } = __require('js/screens/content.js');
+const { isOnline, confirmCode } = __require('js/api.js');
 const pad = (n) => String(n).padStart(2, '0');
 
 exports.default = {
@@ -1767,10 +2205,21 @@ exports.default = {
     tick(false);
     const interval = setInterval(tick, 1000);
 
+    // 서버 응답에 따른 안내 (월 1회 초과 / 체험 모드에서 서버가 만든 번호)
+    const serverNotes = [];
+    if (s.sendResult === 'limit') {
+      serverNotes.push(notice('warn', '이번 달 발송 횟수(1회)를 이미 썼어요. 그때 받은 인증번호를 입력해 주세요. (체험용: 123123)'));
+    } else if (s.demoCode) {
+      serverNotes.push(notice('info', `체험 모드라 실제 문자 대신 서버가 만든 번호를 보여드려요: ${s.demoCode}`));
+    }
+
     return {
-      sub: `${formatPhone(s.phone)}로 인증번호를 보냈어요`,
+      sub: s.sendResult === 'limit'
+        ? `${displayPhone(s.phone, s.country.code)}로 이번 달에 이미 인증번호를 보냈어요`
+        : `${displayPhone(s.phone, s.country.code)}로 인증번호를 보냈어요`,
       body: [
         input.el,
+        ...serverNotes,
         timer,
         restartTimer,
         messages,
@@ -1781,13 +2230,20 @@ exports.default = {
         if (secondsLeft() === 0) return { ok: false, hint: '시간이 지나 인증할 수 없어요' };
         return { ok: code.length === 6, hint: '문자로 받은 6자리를 입력해 주세요' };
       },
-      onNext: () => {
-        if (TEST_CODES.includes(code)) {
+      onNext: async () => {
+        const r = isOnline() ? await confirmCode(s.country.code, s.phone, code) : null;
+        const verified = r ? r.verified : TEST_CODES.includes(code); // 서버가 없으면 화면 규칙으로
+        if (verified) {
           s.verified = true;
           ctx.next('confirm');
-        } else {
-          input.setStatus('error', '인증번호가 맞지 않아요. 문자로 받은 6자리를 다시 확인해 주세요.');
+          return;
         }
+        // 월 1회를 이미 썼는데 그 번호도 만료됐다면, 왜 막혔는지와 할 일을 함께 알려준다
+        const stuck = r && r.reason === 'expired' && s.sendResult === 'limit';
+        const msg = stuck
+          ? '이번 달에 받은 인증번호는 유효 시간(3분)이 지났고, 발송 횟수(1회)를 다 써서 새 번호를 받을 수 없어요. 고객센터에 문의해 주세요. (체험용: 123123)'
+          : (r && r.message) || '인증번호가 맞지 않아요. 문자로 받은 6자리를 다시 확인해 주세요.';
+        input.setStatus('error', msg);
       },
       cleanup: () => clearInterval(interval),
     };
@@ -1804,12 +2260,17 @@ const defaults = () => ({
   name: '홍길동',
   birth: '20000101',
   gender: 'female',
+  country: { name: '대한민국', code: '+82' },
   phone: '01012345678',
   sendCount: 0,
   sentAt: null,
   verified: false,
-  userId: 'hong_gildong',
+  // 서버에 가입이 저장되므로, 체험할 때마다 겹치지 않는 예시 아이디를 쓴다
+  userId: `hong_${Math.floor(1000 + Math.random() * 9000)}`,
+  sendResult: null, // 서버 응답: 'sent' | 'limit' | 'local'
+  demoCode: null, // 체험 모드에서 서버가 만든 인증번호
   password: '',
+  passwordConfirm: '',
   passkey: false,
   returnTo: null, // '수정'으로 들어왔을 때 돌아갈 화면
 });
@@ -1821,7 +2282,7 @@ function resetState() {
 }
 
 const idTypeLabel = { real: '실명 인증 아이디', basic: '일반 아이디' };
-const genderLabel = { male: '남성', female: '여성', none: '선택 안 함' };
+const genderLabel = { male: '남성', female: '여성', none: '비밀' };
 
 exports.state = state;
 exports.resetState = resetState;
@@ -1868,9 +2329,13 @@ function checkBirth(v) {
   return { ok: true, error: false, msg: '' };
 }
 
-/* 휴대전화 번호 */
+/* 휴대전화 번호 (국가 번호에 따라 규칙이 다름) */
+const KOREA = '+82';
 const PHONE_HELP = "'-' 없이 숫자만 입력해도 돼요";
-function formatPhone(v) {
+const INTL_HELP = '국가 번호를 뺀 휴대전화 번호를 숫자만 입력해 주세요';
+
+function formatPhone(v, code = KOREA) {
+  if (code !== KOREA) return digits(v).slice(0, 15);
   const d = digits(v).slice(0, 11);
   if (d.length < 4) return d;
   if (d.length < 8) return `${d.slice(0, 3)}-${d.slice(3)}`;
@@ -1878,8 +2343,18 @@ function formatPhone(v) {
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
 }
 
-function checkPhone(v) {
+/** 화면에 보여줄 번호: 한국은 010-1234-5678, 다른 나라는 +1 2025550123 */
+function displayPhone(v, code = KOREA) {
+  return code === KOREA ? formatPhone(v) : `${code} ${digits(v)}`;
+}
+
+function checkPhone(v, code = KOREA) {
   const d = digits(v);
+  if (code !== KOREA) {
+    return d.length >= 6
+      ? { ok: true, error: false, msg: '' }
+      : { ok: false, error: false, msg: INTL_HELP };
+  }
   if (d.length < 10) return { ok: false, error: false, msg: PHONE_HELP };
   if (!/^01[016789]\d{7,8}$/.test(d)) {
     return { ok: false, error: true, msg: '휴대전화 번호 형식이 아니에요. 010으로 시작하는지 확인해 주세요.' };
@@ -1911,6 +2386,14 @@ const PASSWORD_RULES = [
   { label: '특수문자', hint: '특수문자를 1개 이상 넣어 주세요', test: (v) => /[^A-Za-z0-9\s]/.test(v) },
 ];
 
+/** 비밀번호 확인: 앞부분까지 맞게 치는 중이면 오류를 띄우지 않음 */
+function checkPasswordConfirm(password, confirm) {
+  if (!confirm) return { ok: false, error: false, msg: '같은 비밀번호를 한 번 더 입력해 주세요.' };
+  if (confirm === password) return { ok: true, error: false, msg: '비밀번호가 일치해요' };
+  if (password.startsWith(confirm)) return { ok: false, error: false, msg: '같은 비밀번호를 한 번 더 입력해 주세요.' };
+  return { ok: false, error: true, msg: '비밀번호가 일치하지 않아요. 다시 확인해 주세요.' };
+}
+
 function passwordStrength(v) {
   if (!v) return { label: '—', tone: '' };
   const met = PASSWORD_RULES.filter((r) => r.test(v)).length;
@@ -1924,9 +2407,11 @@ exports.checkName = checkName;
 exports.formatBirth = formatBirth;
 exports.checkBirth = checkBirth;
 exports.formatPhone = formatPhone;
+exports.displayPhone = displayPhone;
 exports.checkPhone = checkPhone;
 exports.checkUserId = checkUserId;
 exports.PASSWORD_RULES = PASSWORD_RULES;
+exports.checkPasswordConfirm = checkPasswordConfirm;
 exports.passwordStrength = passwordStrength;
 
 });

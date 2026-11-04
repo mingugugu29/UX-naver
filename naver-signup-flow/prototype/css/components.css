@@ -116,6 +116,43 @@ button { font-family: var(--font); }
   box-shadow: 0 1px 0 var(--error);
 }
 .field-prefix { font-size: 17px; color: var(--fg-2); flex: none; }
+
+/* 국가 번호 선택: 보이는 건 '+82 ⌄', 실제 선택은 위에 투명하게 겹친 기본 목록 */
+.country {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 0;
+  margin-right: 2px;
+  border-right: 1px solid var(--line);
+  font-size: 17px;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.country-caret {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+.country-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+.country:hover { color: var(--fg); }
+.country:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .field-input {
   flex: 1;
   min-width: 0;

@@ -61,6 +61,26 @@ export const ID_TYPES = [
   },
 ];
 
+// 휴대폰 인증 국가 번호 (같은 번호를 쓰는 나라는 이름으로 구분)
+export const COUNTRIES = [
+  { name: '대한민국', code: '+82' },
+  { name: '미국', code: '+1' },
+  { name: '캐나다', code: '+1' },
+  { name: '일본', code: '+81' },
+  { name: '중국', code: '+86' },
+  { name: '대만', code: '+886' },
+  { name: '홍콩', code: '+852' },
+  { name: '베트남', code: '+84' },
+  { name: '태국', code: '+66' },
+  { name: '필리핀', code: '+63' },
+  { name: '인도네시아', code: '+62' },
+  { name: '싱가포르', code: '+65' },
+  { name: '호주', code: '+61' },
+  { name: '영국', code: '+44' },
+  { name: '독일', code: '+49' },
+  { name: '프랑스', code: '+33' },
+];
+
 // 체험용으로 통과되는 인증번호 (발표용: 123123)
 export const TEST_CODES = ['123123', '123456'];
 export const CODE_SECONDS = 180;

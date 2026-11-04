@@ -100,6 +100,23 @@ body {
 }
 .proto-note b { color: var(--fg-2); }
 
+/* 서버 연결 상태 */
+.server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+}
+.server-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg-off);
+}
+.server-status[data-online="true"]::before { background: var(--brand); }
+.proto-note a.link { font-size: 12px; }
+
 .sr-only {
   position: absolute;
   width: 1px;

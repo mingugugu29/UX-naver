@@ -36,9 +36,13 @@ export function checkBirth(v) {
   return { ok: true, error: false, msg: '' };
 }
 
-/* 휴대전화 번호 */
+/* 휴대전화 번호 (국가 번호에 따라 규칙이 다름) */
+const KOREA = '+82';
 const PHONE_HELP = "'-' 없이 숫자만 입력해도 돼요";
-export function formatPhone(v) {
+const INTL_HELP = '국가 번호를 뺀 휴대전화 번호를 숫자만 입력해 주세요';
+
+export function formatPhone(v, code = KOREA) {
+  if (code !== KOREA) return digits(v).slice(0, 15);
   const d = digits(v).slice(0, 11);
   if (d.length < 4) return d;
   if (d.length < 8) return `${d.slice(0, 3)}-${d.slice(3)}`;
@@ -46,8 +50,18 @@ export function formatPhone(v) {
   return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
 }
 
-export function checkPhone(v) {
+/** 화면에 보여줄 번호: 한국은 010-1234-5678, 다른 나라는 +1 2025550123 */
+export function displayPhone(v, code = KOREA) {
+  return code === KOREA ? formatPhone(v) : `${code} ${digits(v)}`;
+}
+
+export function checkPhone(v, code = KOREA) {
   const d = digits(v);
+  if (code !== KOREA) {
+    return d.length >= 6
+      ? { ok: true, error: false, msg: '' }
+      : { ok: false, error: false, msg: INTL_HELP };
+  }
   if (d.length < 10) return { ok: false, error: false, msg: PHONE_HELP };
   if (!/^01[016789]\d{7,8}$/.test(d)) {
     return { ok: false, error: true, msg: '휴대전화 번호 형식이 아니에요. 010으로 시작하는지 확인해 주세요.' };
@@ -78,6 +92,14 @@ export const PASSWORD_RULES = [
   { label: '숫자', hint: '숫자를 1개 이상 넣어 주세요', test: (v) => /\d/.test(v) },
   { label: '특수문자', hint: '특수문자를 1개 이상 넣어 주세요', test: (v) => /[^A-Za-z0-9\s]/.test(v) },
 ];
+
+/** 비밀번호 확인: 앞부분까지 맞게 치는 중이면 오류를 띄우지 않음 */
+export function checkPasswordConfirm(password, confirm) {
+  if (!confirm) return { ok: false, error: false, msg: '같은 비밀번호를 한 번 더 입력해 주세요.' };
+  if (confirm === password) return { ok: true, error: false, msg: '비밀번호가 일치해요' };
+  if (password.startsWith(confirm)) return { ok: false, error: false, msg: '같은 비밀번호를 한 번 더 입력해 주세요.' };
+  return { ok: false, error: true, msg: '비밀번호가 일치하지 않아요. 다시 확인해 주세요.' };
+}
 
 export function passwordStrength(v) {
   if (!v) return { label: '—', tone: '' };
